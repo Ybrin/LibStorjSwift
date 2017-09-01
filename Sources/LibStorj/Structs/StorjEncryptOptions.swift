@@ -24,19 +24,19 @@ public class StorjEncryptOptions: CStruct {
     ///
     /// - parameter mnemonic: The mnemonic is a BIP39 secret code used for generating keys for file
     public convenience init(mnemonic: String) {
-        let options = StructType(mnemonic: mnemonic)
+        let options = StructType(mnemonic: strdup(mnemonic))
         self.init(type: options)
     }
 
-    public required init(type: StructType) {
+    init(type: StructType) {
         encryptOptions = type
-    }
-
-    public convenience required init(type: UnsafeMutablePointer<StructType>) {
-        self.init(type: type.pointee)
     }
 
     public func get() -> StructType {
         return encryptOptions
+    }
+
+    deinit {
+        free(UnsafeMutablePointer(mutating: encryptOptions.mnemonic))
     }
 }

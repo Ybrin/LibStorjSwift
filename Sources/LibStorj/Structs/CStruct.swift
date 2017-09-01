@@ -12,9 +12,5 @@ public protocol CStruct {
 
     associatedtype StructType
 
-    init(type: UnsafeMutablePointer<StructType>)
-
-    init(type: StructType)
-
     func get() -> StructType
 }

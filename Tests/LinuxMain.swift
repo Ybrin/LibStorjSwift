@@ -13,7 +13,7 @@ import XCTest
 
 XCTMain([
     // All Tests
-    testCase(AuthorizationTests.allTests),
+    testCase(StructTests.allTests),
 ])
 
 #endif

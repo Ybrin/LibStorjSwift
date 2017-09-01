@@ -13,14 +13,10 @@ public class StorjEncryptionCtx: CStruct {
 
     public typealias StructType = storj_encryption_ctx_t
 
-    let t: StructType
+    var t: StructType
 
-    public required init(type: StructType) {
+    init(type: StructType) {
         t = type
-    }
-
-    public required init(type: UnsafeMutablePointer<StructType>) {
-        t = type.pointee
     }
 
     public func get() -> StructType {

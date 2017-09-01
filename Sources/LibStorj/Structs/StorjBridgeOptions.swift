@@ -13,49 +13,83 @@ public class StorjBridgeOptions: CStruct {
 
     public typealias StructType = storj_bridge_options_t
 
-    let bridgeOptions: StructType
+    var bridgeOptions: StructType
 
     public var proto: StorjBridgeOptionsProto? {
-        return StorjBridgeOptionsProto(rawValue: String(cString: bridgeOptions.proto))
+        get {
+            return StorjBridgeOptionsProto(rawValue: String(cString: bridgeOptions.proto))
+        }
+        set {
+            if let newValue = newValue {
+                free(UnsafeMutablePointer(mutating: bridgeOptions.proto))
+                bridgeOptions.proto = UnsafePointer(strdup(newValue.rawValue))
+            }
+        }
     }
 
     public var host: String {
-        return String(cString: bridgeOptions.host)
+        get {
+            return String(cString: bridgeOptions.host)
+        }
+        set {
+            free(UnsafeMutablePointer(mutating: bridgeOptions.host))
+            bridgeOptions.host = UnsafePointer(strdup(newValue))
+        }
     }
 
     public var port: Int32 {
-        return bridgeOptions.port
+        get {
+            return bridgeOptions.port
+        }
+        set {
+            bridgeOptions.port = newValue
+        }
     }
 
     public var user: String {
-        return String(cString: bridgeOptions.user)
+        get {
+            return String(cString: bridgeOptions.user)
+        }
+        set {
+            free(UnsafeMutablePointer(mutating: bridgeOptions.user))
+            bridgeOptions.user = UnsafePointer(strdup(newValue))
+        }
     }
 
     public var pass: String {
-        return String(cString: bridgeOptions.pass)
+        get {
+            return String(cString: bridgeOptions.pass)
+        }
+        set {
+            free(UnsafeMutablePointer(mutating: bridgeOptions.pass))
+            bridgeOptions.pass = UnsafePointer(strdup(newValue))
+        }
     }
 
     public convenience init(proto: StorjBridgeOptionsProto, host: String, port: Int32, user: String, pass: String) {
         let options = StructType(
-            proto: proto.rawValue,
-            host: host,
+            proto: strdup(proto.rawValue),
+            host: strdup(host),
             port: port,
-            user: user,
-            pass: pass
+            user: strdup(user),
+            pass: strdup(pass)
         )
         self.init(type: options)
     }
 
-    public required init(type: StructType) {
+    init(type: StructType) {
         bridgeOptions = type
-    }
-
-    public convenience required init(type: UnsafeMutablePointer<StructType>) {
-        self.init(type: type.pointee)
     }
 
     public func get() -> StructType {
         return bridgeOptions
+    }
+
+    deinit {
+        free(UnsafeMutablePointer(mutating: bridgeOptions.proto))
+        free(UnsafeMutablePointer(mutating: bridgeOptions.host))
+        free(UnsafeMutablePointer(mutating: bridgeOptions.user))
+        free(UnsafeMutablePointer(mutating: bridgeOptions.pass))
     }
 }
 

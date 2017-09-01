@@ -37,8 +37,8 @@ public class StorjHTTPOptions: CStruct {
     /// - parameter proxyUrl: The proxy, if any.
     public convenience init(userAgent: String, proxyUrl: String, lowSpeedLimit: UInt64, lowSpeedTime: UInt64, timeout: UInt64) {
         let options = StructType(
-            user_agent: userAgent,
-            proxy_url: proxyUrl,
+            user_agent: strdup(userAgent),
+            proxy_url: strdup(proxyUrl),
             low_speed_limit: lowSpeedLimit,
             low_speed_time: lowSpeedTime,
             timeout: timeout
@@ -46,15 +46,16 @@ public class StorjHTTPOptions: CStruct {
         self.init(type: options)
     }
 
-    public required init(type: StructType) {
+    init(type: StructType) {
         httpOptions = type
-    }
-
-    public convenience required init(type: UnsafeMutablePointer<StructType>) {
-        self.init(type: type.pointee)
     }
 
     public func get() -> StructType {
         return httpOptions
+    }
+
+    deinit {
+        free(UnsafeMutablePointer(mutating: httpOptions.user_agent))
+        free(UnsafeMutablePointer(mutating: httpOptions.proxy_url))
     }
 }
