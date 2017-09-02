@@ -8,7 +8,8 @@ import XCTest
 class StructTests: XCTestCase {
 
     static let allTests = [
-        ("testBridgeOptions", testBridgeOptions)
+        ("testBridgeOptions", testBridgeOptions),
+        ("testEncryptOptions", testEncryptOptions)
     ]
 
     func testBridgeOptions() throws {
@@ -38,5 +39,13 @@ class StructTests: XCTestCase {
 
         t.pass = "PassworD"
         XCTAssertEqual(t.pass, "PassworD")
+    }
+
+    func testEncryptOptions() throws {
+        let t = StorjEncryptOptions(mnemonic: "Ideally this should be a helpful text")
+        XCTAssertEqual(t.mnemonic, "Ideally this should be a helpful text")
+
+        t.mnemonic = "Not so helpful"
+        XCTAssertEqual(t.mnemonic, "Not so helpful")
     }
 }

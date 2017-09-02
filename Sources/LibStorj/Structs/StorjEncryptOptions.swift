@@ -13,11 +13,17 @@ public class StorjEncryptOptions: CStruct {
 
     public typealias StructType = storj_encrypt_options_t
 
-    let encryptOptions: StructType
+    var encryptOptions: StructType
 
     /// Returns the mnemonic of this StorjEncryptOptions
     public var mnemonic: String {
-        return String(cString: encryptOptions.mnemonic)
+        get {
+            return String(cString: encryptOptions.mnemonic)
+        }
+        set {
+            free(UnsafeMutablePointer(mutating: encryptOptions.mnemonic))
+            encryptOptions.mnemonic = UnsafePointer(strdup(newValue))
+        }
     }
 
     /// Initializes StorjEncryptOptions with the given mnemonic
