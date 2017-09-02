@@ -9,26 +9,53 @@ public class StorjHTTPOptions: CStruct {
 
     public typealias StructType = storj_http_options_t
 
-    let httpOptions: StructType
+    var httpOptions: StructType
 
     public var userAgent: String {
-        return String(cString: httpOptions.user_agent)
+        get {
+            return String(cString: httpOptions.user_agent)
+        }
+        set {
+            free(UnsafeMutablePointer(mutating: httpOptions.user_agent))
+            httpOptions.user_agent = UnsafePointer(strdup(newValue))
+        }
     }
 
     public var proxyUrl: String {
-        return String(cString: httpOptions.proxy_url)
+        get {
+            return String(cString: httpOptions.proxy_url)
+        }
+        set {
+            free(UnsafeMutablePointer(mutating: httpOptions.proxy_url))
+            httpOptions.proxy_url = UnsafePointer(strdup(newValue))
+        }
     }
 
     public var lowSpeedLimit: UInt64 {
-        return httpOptions.low_speed_limit
+        get {
+            return httpOptions.low_speed_limit
+        }
+        set {
+            httpOptions.low_speed_limit = newValue
+        }
     }
 
     public var lowSpeedTime: UInt64 {
-        return httpOptions.low_speed_time
+        get {
+            return httpOptions.low_speed_time
+        }
+        set {
+            httpOptions.low_speed_time = newValue
+        }
     }
 
     public var timeout: UInt64 {
-        return httpOptions.timeout
+        get {
+            return httpOptions.timeout
+        }
+        set {
+            httpOptions.timeout = newValue
+        }
     }
 
     /// Initializes StorjHTTPOptions with the given parameters
