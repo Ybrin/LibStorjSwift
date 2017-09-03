@@ -13,25 +13,29 @@ public class StorjLogOptions: CStruct {
 
     public typealias StructType = storj_log_options_t
 
-    public typealias StorjLogger = (_ message: String, _ level: Int) -> Void
+    var logOptions: StructType
 
-    let logOptions: StructType
-
-    var logger: StorjLogger?
-
-    public convenience init(logger: StorjLogger? = nil, level: Int32) {
-        let options = StructType(logger: structLogger, level: level)
-        self.init(type: options)
+    var logger: (@convention(c) (UnsafePointer<Int8>?, Int32, UnsafeMutableRawPointer?) -> Void)? {
+        get {
+            return logOptions.logger
+        }
+        set {
+            logOptions.logger = newValue
+        }
     }
 
-    var structLogger: (@convention(c) (UnsafePointer<Int8>?, Int32, UnsafeMutableRawPointer?) -> Void) {
-        let c: (@convention(c) (UnsafePointer<Int8>?, Int32, UnsafeMutableRawPointer?) -> Void) = { message, level, handle in
-            if let message = message {
-                let str = String(cString: message)
-                self.logger?(str, Int(level))
-            }
+    var level: Int32 {
+        get {
+            return logOptions.level
         }
-        return c
+        set {
+            logOptions.level = newValue
+        }
+    }
+
+    public convenience init(logger: (@convention(c) (UnsafePointer<Int8>?, Int32, UnsafeMutableRawPointer?) -> Void)? = nil, level: Int32) {
+        let options = StructType(logger: logger, level: level)
+        self.init(type: options)
     }
 
     init(type: StructType) {
