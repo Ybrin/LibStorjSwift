@@ -11,16 +11,23 @@ import CLibStorj
 
 public class StorjLogOptions: CStruct {
 
+    static var map: [String: StorjSwiftLogger] = [:]
+
+    public typealias StorjSwiftLogger = ((_ message: String, _ level: Int) -> Void)
+
     public typealias StructType = storj_log_options_t
 
     var logOptions: StructType
 
-    var logger: (@convention(c) (UnsafePointer<Int8>?, Int32, UnsafeMutableRawPointer?) -> Void)? {
+    /// A handle, aka context for this exact instance
+    var handle: String
+
+    var logger: StorjSwiftLogger? {
         get {
-            return logOptions.logger
+            return StorjLogOptions.map[handle]
         }
         set {
-            logOptions.logger = newValue
+            StorjLogOptions.map[handle] = newValue
         }
     }
 
@@ -33,13 +40,27 @@ public class StorjLogOptions: CStruct {
         }
     }
 
-    public convenience init(logger: (@convention(c) (UnsafePointer<Int8>?, Int32, UnsafeMutableRawPointer?) -> Void)? = nil, level: Int32) {
-        let options = StructType(logger: logger, level: level)
-        self.init(type: options)
+    public convenience init(level: Int32, logger: StorjSwiftLogger? = nil) {
+        let handle = UUID().uuidString
+        StorjLogOptions.map[handle] = logger
+
+        let cLog: (@convention(c) (UnsafePointer<Int8>?, Int32, UnsafeMutableRawPointer?) -> Void) = { msg, level, handle in
+            guard let cContext = handle?.assumingMemoryBound(to: Int8.self), let msg = msg else {
+                return
+            }
+            let context = String(cString: cContext)
+
+            let message = String(cString: msg)
+            StorjLogOptions.map[context]?(message, Int(level))
+        }
+
+        let options = StructType(logger: cLog, level: level)
+        self.init(type: options, handle: handle)
     }
 
-    init(type: StructType) {
+    init(type: StructType, handle: String) {
         logOptions = type
+        self.handle = handle
     }
 
     public func get() -> StructType {

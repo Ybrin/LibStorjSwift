@@ -9,7 +9,9 @@ class StructTests: XCTestCase {
 
     static let allTests = [
         ("testBridgeOptions", testBridgeOptions),
-        ("testEncryptOptions", testEncryptOptions)
+        ("testEncryptOptions", testEncryptOptions),
+        ("testHttpOptions", testHttpOptions),
+        ("testLogOptions", testLogOptions)
     ]
 
     func testBridgeOptions() throws {
@@ -49,7 +51,7 @@ class StructTests: XCTestCase {
         XCTAssertEqual(t.mnemonic, "Not so helpful")
     }
 
-    func testHttpOptions() {
+    func testHttpOptions() throws {
         let t = StorjHTTPOptions(userAgent: "chrome", proxyUrl: "https://proxy.url", lowSpeedLimit: 100, lowSpeedTime: 50, timeout: 80)
         XCTAssertEqual(t.userAgent, "chrome")
         XCTAssertEqual(t.proxyUrl, "https://proxy.url")
@@ -71,5 +73,28 @@ class StructTests: XCTestCase {
 
         t.timeout = UInt64(UInt32.max) + UInt64(1000)
         XCTAssertEqual(t.timeout, UInt64(UInt32.max) + UInt64(1000))
+    }
+
+    func testLogOptions() throws {
+        // Saves what would normally be printed by the logger
+        var print = ""
+
+        let t = StorjLogOptions(level: 0) { (msg, level) in
+            print = "\(level): \(msg)"
+        }
+
+        // Sample run the logger function
+        t.get().logger("abcdef", 0, UnsafeMutableRawPointer(mutating: t.handle))
+
+        XCTAssertEqual(print, "0: abcdef")
+
+        t.logger = { (msg, level) in
+            print = "#lol"
+        }
+
+        // Second sample run
+        t.get().logger("ghijkl", 1, UnsafeMutableRawPointer(mutating: t.handle))
+
+        XCTAssertEqual(print, "#lol")
     }
 }
