@@ -14,6 +14,7 @@ import XCTest
 XCTMain([
     // All Tests
     testCase(StructTests.allTests),
+    testCase(LibStorjTests.allTests),
 ])
 
 #endif

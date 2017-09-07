@@ -11,7 +11,7 @@ import CLibStorj
 
 public class StorjLogOptions: CStruct {
 
-    static var map: [String: StorjSwiftLogger] = [:]
+    static var loggerMap: [String: StorjSwiftLogger] = [:]
 
     public typealias StorjSwiftLogger = ((_ message: String, _ level: Int) -> Void)
 
@@ -24,10 +24,10 @@ public class StorjLogOptions: CStruct {
 
     var logger: StorjSwiftLogger? {
         get {
-            return StorjLogOptions.map[handle]
+            return type(of: self).loggerMap[handle]
         }
         set {
-            StorjLogOptions.map[handle] = newValue
+            type(of: self).loggerMap[handle] = newValue
         }
     }
 
@@ -42,7 +42,7 @@ public class StorjLogOptions: CStruct {
 
     public convenience init(level: Int32, logger: StorjSwiftLogger? = nil) {
         let handle = UUID().uuidString
-        StorjLogOptions.map[handle] = logger
+        type(of: self).loggerMap[handle] = logger
 
         let cLog: (@convention(c) (UnsafePointer<Int8>?, Int32, UnsafeMutableRawPointer?) -> Void) = { msg, level, handle in
             guard let cContext = handle?.assumingMemoryBound(to: Int8.self), let msg = msg else {
@@ -51,7 +51,7 @@ public class StorjLogOptions: CStruct {
             let context = String(cString: cContext)
 
             let message = String(cString: msg)
-            StorjLogOptions.map[context]?(message, Int(level))
+            StorjLogOptions.loggerMap[context]?(message, Int(level))
         }
 
         let options = StructType(logger: cLog, level: level)
@@ -65,5 +65,10 @@ public class StorjLogOptions: CStruct {
 
     public func get() -> StructType {
         return logOptions
+    }
+
+    deinit {
+        // Delete logger for this instance
+        type(of: self).loggerMap[handle] = nil
     }
 }
