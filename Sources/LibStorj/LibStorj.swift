@@ -179,4 +179,18 @@ public class LibStorj {
 
         return mnemonic
     }
+
+    /**
+     * Will check whether a mnemonic is valid or not
+     *
+     * This will check whether a mnemonic has been entered correctly by verifying
+     * the checksum, and that words are a part of the list.
+     *
+     * - parameter mnemonic: The mnemonic to check
+     *
+     * - returns: true on success and false on failure
+     */
+    public func storjMnemonicCheck(mnemonic: String) -> Bool {
+        return storj_mnemonic_check(mnemonic)
+    }
 }
