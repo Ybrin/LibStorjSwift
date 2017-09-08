@@ -34,6 +34,19 @@ public class StorjHTTPOptions: CStruct {
         }
     }
 
+    public var cainfoPath: String? {
+        get {
+            if let c = httpOptions.cainfo_path {
+                return String(cString: c)
+            }
+            return nil
+        }
+        set {
+            free(UnsafeMutablePointer(mutating: httpOptions.cainfo_path))
+            httpOptions.cainfo_path = newValue != nil ? UnsafePointer(strdup(newValue)) : nil
+        }
+    }
+
     public var lowSpeedLimit: UInt64 {
         get {
             return httpOptions.low_speed_limit
@@ -65,10 +78,11 @@ public class StorjHTTPOptions: CStruct {
     ///
     /// - parameter userAgent: The user agent
     /// - parameter proxyUrl: The proxy, if any.
-    public convenience init(userAgent: String = "libstorj/0.0.1", proxyUrl: String? = nil, lowSpeedLimit: UInt64 = UInt64(STORJ_LOW_SPEED_LIMIT), lowSpeedTime: UInt64 = UInt64(STORJ_LOW_SPEED_TIME), timeout: UInt64 = UInt64(STORJ_HTTP_TIMEOUT)) {
+    public convenience init(userAgent: String = "libstorj/0.0.1", proxyUrl: String? = nil, cainfoPath: String? = nil, lowSpeedLimit: UInt64 = UInt64(STORJ_LOW_SPEED_LIMIT), lowSpeedTime: UInt64 = UInt64(STORJ_LOW_SPEED_TIME), timeout: UInt64 = UInt64(STORJ_HTTP_TIMEOUT)) {
         let options = StructType(
             user_agent: strdup(userAgent),
             proxy_url: proxyUrl != nil ? strdup(proxyUrl) : nil,
+            cainfo_path: cainfoPath != nil ? strdup(cainfoPath) : nil,
             low_speed_limit: lowSpeedLimit,
             low_speed_time: lowSpeedTime,
             timeout: timeout
@@ -87,5 +101,6 @@ public class StorjHTTPOptions: CStruct {
     deinit {
         free(UnsafeMutablePointer(mutating: httpOptions.user_agent))
         free(UnsafeMutablePointer(mutating: httpOptions.proxy_url))
+        free(UnsafeMutablePointer(mutating: httpOptions.cainfo_path))
     }
 }
