@@ -12,7 +12,8 @@ import XCTest
 class LibStorjTests: XCTestCase {
 
     static let allTests = [
-        ("testMnemonic", testMnemonic)
+        ("testMnemonic", testMnemonic),
+        ("testGetInfo", testGetInfo)
     ]
 
     var libStorj: LibStorj!
@@ -30,5 +31,28 @@ class LibStorjTests: XCTestCase {
         XCTAssert(libStorj.storjMnemonicCheck(mnemonic: mn!))
 
         XCTAssertFalse(libStorj.storjMnemonicCheck(mnemonic: "abc def ghi jkl mno pqr stu vwx yz"))
+    }
+
+    func testGetInfo() throws {
+        let b = StorjBridgeOptions(proto: .https, host: "api.storj.io", port: 443)
+
+        let env = libStorj.storjInitEnv(options: b)
+
+        XCTAssertNotNil(env)
+
+        let semaphore = DispatchSemaphore(value: 0)
+
+        libStorj.storjBridgeGetInfo(env: env!) { (success, req) in
+            semaphore.signal()
+
+            print("PRINTING SUCCESS: \(success)")
+            print("SUCCESS!")
+            let resp = try? req.response?.serialize().makeString() ?? "***"
+            print(resp ?? "***")
+        }
+
+        print(env!.get().loop.pointee.active_handles)
+
+        semaphore.wait()
     }
 }

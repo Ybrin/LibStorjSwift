@@ -58,6 +58,10 @@ public class StorjLogOptions: CStruct {
         self.init(type: options, handle: handle)
     }
 
+    public convenience init() {
+        self.init(type: StructType(), handle: UUID().uuidString)
+    }
+
     init(type: StructType, handle: String) {
         logOptions = type
         self.handle = handle

@@ -21,13 +21,16 @@ public class StorjHTTPOptions: CStruct {
         }
     }
 
-    public var proxyUrl: String {
+    public var proxyUrl: String? {
         get {
-            return String(cString: httpOptions.proxy_url)
+            if let p = httpOptions.proxy_url {
+                return String(cString: p)
+            }
+            return nil
         }
         set {
             free(UnsafeMutablePointer(mutating: httpOptions.proxy_url))
-            httpOptions.proxy_url = UnsafePointer(strdup(newValue))
+            httpOptions.proxy_url = newValue != nil ? UnsafePointer(strdup(newValue)) : nil
         }
     }
 
@@ -62,10 +65,10 @@ public class StorjHTTPOptions: CStruct {
     ///
     /// - parameter userAgent: The user agent
     /// - parameter proxyUrl: The proxy, if any.
-    public convenience init(userAgent: String, proxyUrl: String, lowSpeedLimit: UInt64, lowSpeedTime: UInt64, timeout: UInt64) {
+    public convenience init(userAgent: String = "libstorj/0.0.1", proxyUrl: String? = nil, lowSpeedLimit: UInt64 = UInt64(STORJ_LOW_SPEED_LIMIT), lowSpeedTime: UInt64 = UInt64(STORJ_LOW_SPEED_TIME), timeout: UInt64 = UInt64(STORJ_HTTP_TIMEOUT)) {
         let options = StructType(
             user_agent: strdup(userAgent),
-            proxy_url: strdup(proxyUrl),
+            proxy_url: proxyUrl != nil ? strdup(proxyUrl) : nil,
             low_speed_limit: lowSpeedLimit,
             low_speed_time: lowSpeedTime,
             timeout: timeout

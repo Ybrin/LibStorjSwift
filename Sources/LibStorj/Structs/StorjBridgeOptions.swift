@@ -46,33 +46,39 @@ public class StorjBridgeOptions: CStruct {
         }
     }
 
-    public var user: String {
+    public var user: String? {
         get {
-            return String(cString: bridgeOptions.user)
+            if let u = bridgeOptions.user {
+                return String(cString: u)
+            }
+            return nil
         }
         set {
             free(UnsafeMutablePointer(mutating: bridgeOptions.user))
-            bridgeOptions.user = UnsafePointer(strdup(newValue))
+            bridgeOptions.user = newValue != nil ? UnsafePointer(strdup(newValue)) : nil
         }
     }
 
-    public var pass: String {
+    public var pass: String? {
         get {
-            return String(cString: bridgeOptions.pass)
+            if let p = bridgeOptions.pass {
+                return String(cString: p)
+            }
+            return nil
         }
         set {
             free(UnsafeMutablePointer(mutating: bridgeOptions.pass))
-            bridgeOptions.pass = UnsafePointer(strdup(newValue))
+            bridgeOptions.pass = newValue != nil ? UnsafePointer(strdup(newValue)) : nil
         }
     }
 
-    public convenience init(proto: StorjBridgeOptionsProto, host: String, port: Int32, user: String, pass: String) {
+    public convenience init(proto: StorjBridgeOptionsProto, host: String, port: Int32, user: String? = nil, pass: String? = nil) {
         let options = StructType(
             proto: strdup(proto.rawValue),
             host: strdup(host),
             port: port,
-            user: strdup(user),
-            pass: strdup(pass)
+            user: user != nil ? strdup(user) : nil,
+            pass: pass != nil ? strdup(pass) : nil
         )
         self.init(type: options)
     }

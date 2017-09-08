@@ -41,6 +41,16 @@ class StructTests: XCTestCase {
 
         t.pass = "PassworD"
         XCTAssertEqual(t.pass, "PassworD")
+
+        // Test null values
+        let t2 = StorjBridgeOptions(proto: .https, host: "https://api.storj.io", port: 1234)
+        XCTAssertNil(t2.user)
+        XCTAssertNil(t2.pass)
+
+        t2.user = nil
+        XCTAssertNil(t2.user)
+        t2.pass = nil
+        XCTAssertNil(t2.pass)
     }
 
     func testEncryptOptions() throws {
