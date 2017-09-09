@@ -25,4 +25,16 @@ public class StorjEnv: CStruct {
 
     deinit {
     }
+
+    /**
+     * Executes the UV loop on the given mode.
+     *
+     * All queued jobs for this environment will be executed
+     *
+     * - parameter mode: The uv_run_mode on which the jobs should be run.
+     *                   Defaults to `UV_RUN_DEFAULT`.
+     */
+    func executeLoop(mode: uv_run_mode = UV_RUN_DEFAULT) {
+        uv_run(storjEnv.loop, mode)
+    }
 }

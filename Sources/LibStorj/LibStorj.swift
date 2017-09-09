@@ -218,8 +218,9 @@ public class LibStorj {
 
         var e = env.get()
         let dupUUID = strdup(uuid)
-        print("CODE: \(storj_bridge_get_info(&e, UnsafeMutableRawPointer(mutating: dupUUID), callback))")
+        storj_bridge_get_info(&e, UnsafeMutableRawPointer(mutating: dupUUID), callback)
 
-        print("Code: \(uv_run(e.loop, UV_RUN_DEFAULT))")
+        // Run the uv loop
+        env.executeLoop()
     }
 }
