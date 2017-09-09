@@ -40,11 +40,7 @@ class LibStorjTests: XCTestCase {
 
         XCTAssertNotNil(env)
 
-        let semaphore = DispatchSemaphore(value: 0)
-
         libStorj.storjBridgeGetInfo(env: env!) { (success, req) in
-            semaphore.signal()
-
             print("PRINTING SUCCESS: \(success)")
             print("SUCCESS!")
             let resp = try? req.response?.serialize().makeString() ?? "***"
@@ -52,7 +48,5 @@ class LibStorjTests: XCTestCase {
         }
 
         print(env!.get().loop.pointee.active_handles)
-
-        semaphore.wait()
     }
 }

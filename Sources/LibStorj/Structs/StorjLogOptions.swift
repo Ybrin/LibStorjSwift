@@ -40,7 +40,7 @@ public class StorjLogOptions: CStruct {
         }
     }
 
-    public convenience init(level: Int32, logger: StorjSwiftLogger? = nil) {
+    public convenience init(level: Int32 = 0, logger: StorjSwiftLogger? = nil) {
         let handle = UUID().uuidString
         type(of: self).loggerMap[handle] = logger
 
@@ -56,10 +56,6 @@ public class StorjLogOptions: CStruct {
 
         let options = StructType(logger: cLog, level: level)
         self.init(type: options, handle: handle)
-    }
-
-    public convenience init() {
-        self.init(type: StructType(), handle: UUID().uuidString)
     }
 
     init(type: StructType, handle: String) {
