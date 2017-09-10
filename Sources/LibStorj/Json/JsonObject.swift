@@ -29,7 +29,7 @@ import CLibStorj
  */
 public extension JSON {
 
-    public init?(jsonString: String) {
+    init?(jsonString: String) {
         try? self.init(json: JSON(bytes: jsonString.bytes))
     }
 
