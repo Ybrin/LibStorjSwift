@@ -34,7 +34,7 @@ public class LibStorj {
         httpOptions: StorjHTTPOptions = StorjHTTPOptions(),
         logOptions: StorjLogOptions = StorjLogOptions()
         ) {
-        if let s = LibStorj.storjInitEnv(options: options, encryptOptions: encryptOptions, httpOptions: httpOptions, logOptions: logOptions) {
+        if let s = LibStorj.initEnv(options: options, encryptOptions: encryptOptions, httpOptions: httpOptions, logOptions: logOptions) {
             self.storjEnv = s
         } else {
             return nil
@@ -43,7 +43,7 @@ public class LibStorj {
 
     deinit {
         // Destroy the storj environment and free remaining allocated memory
-        _ = LibStorj.storjDestroyEnv(env: storjEnv)
+        _ = LibStorj.destroyEnv(env: storjEnv)
     }
 
     /**
@@ -60,7 +60,7 @@ public class LibStorj {
      *
      * - returns: A null value on error, otherwise a storj_env pointer.
      */
-    static func storjInitEnv(
+    static func initEnv(
         options: StorjBridgeOptions,
         encryptOptions: StorjEncryptOptions?,
         httpOptions: StorjHTTPOptions,
@@ -90,7 +90,7 @@ public class LibStorj {
      *
      * - parameter env: The environment which should be destroyed
      */
-    static func storjDestroyEnv(env: StorjEnv) -> Int32 {
+    static func destroyEnv(env: StorjEnv) -> Int32 {
         var e = env.get()
         return storj_destroy_env(&e)
     }
@@ -109,7 +109,7 @@ public class LibStorj {
      *
      * - returns: false on error, true on success.
      */
-    public func storjEncryptWriteAuth(
+    public static func encryptWriteAuth(
         filepath: String,
         passphrase: String,
         bridgeUser: String,
@@ -150,7 +150,7 @@ public class LibStorj {
      *
      * - returns: Decrypted bridgeUser, bridgePass and mnemonic if successful, nil otherwise
      */
-    public func storjDecryptReadAuth(filepath: String, passphrase: String) -> (bridgeUser: String, bridgePass: String, mnemonic: String)? {
+    public static func decryptReadAuth(filepath: String, passphrase: String) -> (bridgeUser: String, bridgePass: String, mnemonic: String)? {
         let bridgeUser = UnsafeMutablePointer<UnsafeMutablePointer<Int8>?>.allocate(capacity: 1)
         let bridgePass = UnsafeMutablePointer<UnsafeMutablePointer<Int8>?>.allocate(capacity: 1)
         let mnemonic = UnsafeMutablePointer<UnsafeMutablePointer<Int8>?>.allocate(capacity: 1)
@@ -197,7 +197,7 @@ public class LibStorj {
      *
      * - returns: The new mnemonic if successful, nil otherwise
      */
-    public func storjMnemonicGenerate(strength: UInt8) -> String? {
+    public static func mnemonicGenerate(strength: UInt8) -> String? {
         let buffer = UnsafeMutablePointer<UnsafeMutablePointer<Int8>?>.allocate(capacity: 1)
 
         defer {
@@ -225,36 +225,80 @@ public class LibStorj {
      *
      * - returns: true on success and false on failure
      */
-    public func storjMnemonicCheck(mnemonic: String) -> Bool {
+    public static func mnemonicCheck(mnemonic: String) -> Bool {
         return storj_mnemonic_check(mnemonic)
     }
 
-    static var getInfoCallbacks: [String: ((_ success: Bool, _ request: JsonRequest) -> Void)] = [:]
-    public func storjBridgeGetInfo(completion: ((_ success: Bool, _ request: JsonRequest) -> Void)? = nil) {
-        let uuid = UUID().uuidString
-        LibStorj.getInfoCallbacks[uuid] = completion
+    /// A dictionary which holds all queued response callbacks.
+    /// These callbacks must be stored in a static data structure
+    /// in order to don't be bound to the context free C convention
+    /// functions.
+    /// Appenders are responsible for deleting the stored value after
+    /// it is not used any more.
+    /// As a key a UUID should be used. e.g.: UUID().uuidString
+    static var responseCallbacks: [String: ((_ success: Bool, _ request: JsonRequest) -> Void)] = [:]
 
-        let callback: uv_after_work_cb = { request, status in
-            guard let req = request?.pointee.data.assumingMemoryBound(to: json_request_t.self).pointee else {
-                // There is really nothing left to do here. We don't have a request structure and therefore don't have
-                // the handle we need in order to run the callback...
-                return
-            }
-            let handle = String(cString: req.handle.assumingMemoryBound(to: Int8.self))
-
-            LibStorj.getInfoCallbacks[handle]?(status == 0, JsonRequest(type: req))
-
-            // Delete callback after call
-            LibStorj.getInfoCallbacks[handle] = nil
-
-            free(req.handle)
+    /// A default response callback which gets the Swift callback from
+    /// the `responseCallbacks` dictionary (with the request handle as the key)
+    /// and executues it. The hanlde will be freed after that.
+    let rawResponseCallback: uv_after_work_cb = { request, status in
+        guard let req = request?.pointee.data.assumingMemoryBound(to: json_request_t.self).pointee else {
+            // There is really nothing left to do here. We don't have a request structure and therefore don't have
+            // the handle we need in order to run the callback...
+            return
         }
+        let handle = String(cString: req.handle.assumingMemoryBound(to: Int8.self))
+
+        LibStorj.responseCallbacks[handle]?(status == 0, JsonRequest(type: req))
+
+        // Delete callback after call
+        LibStorj.responseCallbacks[handle] = nil
+
+        free(req.handle)
+    }
+
+    /**
+     * Get Storj bridge API information.
+     *
+     * This function will get general information about the storj bridge api.
+     * The network i/o is performed in a thread pool with a libuv loop, and the
+     * response is available in the callback function.
+     *
+     * - parameter completion: A function which will be called after the request was
+     *                         completed and a response was received.
+     *
+     * - returns: True if the job was queued and executed successfully, in which case
+     *         you can expect the callback to be exected. False otherwise, in which
+     *         case the execution of the callback function can't be guaranteed.
+     */
+    public func getInfo(completion: ((_ success: Bool, _ request: JsonRequest) -> Void)? = nil) -> Bool {
+        let uuid = UUID().uuidString
+        LibStorj.responseCallbacks[uuid] = completion
+
+        var status: Int32 = 1
 
         var e = storjEnv.get()
         let dupUUID = strdup(uuid)
-        storj_bridge_get_info(&e, UnsafeMutableRawPointer(mutating: dupUUID), callback)
+        status = storj_bridge_get_info(&e, dupUUID, rawResponseCallback)
 
         // Run the uv loop
-        storjEnv.executeLoop()
+        status = storjEnv.executeLoop()
+
+        return status == 0
+    }
+
+    public func getBuckets(completion: ((_ success: Bool, _ request: JsonRequest) -> Void)? = nil) -> Bool {
+        let uuid = UUID().uuidString
+        LibStorj.responseCallbacks[uuid] = completion
+
+        var status: Int32 = 1
+
+        var e = storjEnv.get()
+        let dupUUID = strdup(uuid)
+        status = storj_bridge_get_buckets(&e, dupUUID, rawResponseCallback)
+
+        status = storjEnv.executeLoop()
+
+        return status == 0
     }
 }

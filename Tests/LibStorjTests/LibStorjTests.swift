@@ -13,36 +13,57 @@ class LibStorjTests: XCTestCase {
 
     static let allTests = [
         ("testMnemonic", testMnemonic),
-        ("testGetInfo", testGetInfo)
+        ("testGetInfo", testGetInfo),
+        ("testGetBuckets", testGetBuckets)
     ]
 
     var libStorj: LibStorj!
 
     override func setUp() {
-        let b = StorjBridgeOptions(proto: .https, host: "api.storj.io", port: 443)
+        let o = LibStorj.decryptReadAuth(filepath: "$PATH", passphrase: "$PASS")
 
-        libStorj = LibStorj(options: b)
+        XCTAssertNotNil(o)
+
+        let b = StorjBridgeOptions(proto: .https, host: "api.storj.io", port: 443, user: o?.bridgeUser, pass: o?.bridgePass)
+        let e = StorjEncryptOptions(mnemonic: o!.mnemonic)
+
+        libStorj = LibStorj(options: b, encryptOptions: e)
 
         XCTAssertNotNil(libStorj)
     }
 
     func testMnemonic() throws {
-        let mn = libStorj.storjMnemonicGenerate(strength: 128)
+        let mn = LibStorj.mnemonicGenerate(strength: 128)
         // print(mn)
         XCTAssertNotNil(mn)
 
         // Test check mnemonic
-        XCTAssert(libStorj.storjMnemonicCheck(mnemonic: mn!))
+        XCTAssert(LibStorj.mnemonicCheck(mnemonic: mn!))
 
-        XCTAssertFalse(libStorj.storjMnemonicCheck(mnemonic: "abc def ghi jkl mno pqr stu vwx yz"))
+        XCTAssertFalse(LibStorj.mnemonicCheck(mnemonic: "abc def ghi jkl mno pqr stu vwx yz"))
     }
 
     func testGetInfo() throws {
-        libStorj.storjBridgeGetInfo() { (success, req) in
+        let success = libStorj.getInfo() { (success, req) in
+            print("PRINTING SUCCESS: \(success)")
+            print("SUCCESS!")
+            let resp = try? req.response?.serialize().makeString() ?? ""
+            // print(resp ?? "***")
+
+            XCTAssertNotNil(resp)
+        }
+
+        XCTAssert(success)
+    }
+
+    func testGetBuckets() throws {
+        let success = libStorj.getBuckets { (success, req) in
             print("PRINTING SUCCESS: \(success)")
             print("SUCCESS!")
             let resp = try? req.response?.serialize().makeString() ?? "***"
             print(resp ?? "***")
         }
+
+        XCTAssert(success)
     }
 }

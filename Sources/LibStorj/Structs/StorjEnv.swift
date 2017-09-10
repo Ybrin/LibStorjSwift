@@ -33,8 +33,10 @@ public class StorjEnv: CStruct {
      *
      * - parameter mode: The uv_run_mode on which the jobs should be run.
      *                   Defaults to `UV_RUN_DEFAULT`.
+     *
+     * - returns: Non-zero value on error, zero on success.
      */
-    func executeLoop(mode: uv_run_mode = UV_RUN_DEFAULT) {
-        uv_run(storjEnv.loop, mode)
+    func executeLoop(mode: uv_run_mode = UV_RUN_DEFAULT) -> Int32 {
+        return uv_run(storjEnv.loop, mode)
     }
 }

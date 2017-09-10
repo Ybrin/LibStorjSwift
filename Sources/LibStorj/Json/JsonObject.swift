@@ -33,7 +33,11 @@ public extension JSON {
         try? self.init(json: JSON(bytes: jsonString.bytes))
     }
 
-    init?(jsonObject: OpaquePointer) {
+    init?(jsonObject: OpaquePointer?) {
+        guard let jsonObject = jsonObject else {
+            return nil
+        }
+
         guard let str = json_object_to_json_string(jsonObject) else {
             return nil
         }
