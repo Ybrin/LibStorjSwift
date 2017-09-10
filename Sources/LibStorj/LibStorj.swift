@@ -11,6 +11,41 @@ import CLibStorj
 
 public class LibStorj {
 
+    public let storjEnv: StorjEnv
+
+    /**
+     * Initialize a Storj environment and returns an instance of LibStorj
+     * which holds and wraps all functions from libstorj.
+     *
+     * This will setup an event loop for queueing further actions, as well
+     * as define necessary configuration options for communicating with Storj
+     * bridge, and for encrypting/decrypting files.
+     *
+     * - parameter options: Storj Bridge API options
+     * - parameter encryptOptions: File encryption options
+     * - parameter httpOptions: HTTP settings
+     * - parameter logOptions: Logging settings
+     *
+     * - returns: nil on error, an instance of LibStorj otherwise.
+     */
+    public init?(
+        options: StorjBridgeOptions,
+        encryptOptions: StorjEncryptOptions? = nil,
+        httpOptions: StorjHTTPOptions = StorjHTTPOptions(),
+        logOptions: StorjLogOptions = StorjLogOptions()
+        ) {
+        if let s = LibStorj.storjInitEnv(options: options, encryptOptions: encryptOptions, httpOptions: httpOptions, logOptions: logOptions) {
+            self.storjEnv = s
+        } else {
+            return nil
+        }
+    }
+
+    deinit {
+        // Destroy the storj environment and free remaining allocated memory
+        _ = LibStorj.storjDestroyEnv(env: storjEnv)
+    }
+
     /**
      * Initialize a Storj environment
      *
@@ -25,11 +60,11 @@ public class LibStorj {
      *
      * - returns: A null value on error, otherwise a storj_env pointer.
      */
-    public func storjInitEnv(
+    static func storjInitEnv(
         options: StorjBridgeOptions,
-        encryptOptions: StorjEncryptOptions? = nil,
-        httpOptions: StorjHTTPOptions = StorjHTTPOptions(),
-        logOptions: StorjLogOptions = StorjLogOptions()
+        encryptOptions: StorjEncryptOptions?,
+        httpOptions: StorjHTTPOptions,
+        logOptions: StorjLogOptions
         ) -> StorjEnv? {
         var o = options.get()
         var e = encryptOptions?.get()
@@ -55,7 +90,7 @@ public class LibStorj {
      *
      * - parameter env: The environment which should be destroyed
      */
-    public func storjDestroyEnv(env: StorjEnv) -> Int32 {
+    static func storjDestroyEnv(env: StorjEnv) -> Int32 {
         var e = env.get()
         return storj_destroy_env(&e)
     }
@@ -195,12 +230,11 @@ public class LibStorj {
     }
 
     static var getInfoCallbacks: [String: ((_ success: Bool, _ request: JsonRequest) -> Void)] = [:]
-    public func storjBridgeGetInfo(env: StorjEnv, completion: ((_ success: Bool, _ request: JsonRequest) -> Void)? = nil) {
+    public func storjBridgeGetInfo(completion: ((_ success: Bool, _ request: JsonRequest) -> Void)? = nil) {
         let uuid = UUID().uuidString
         LibStorj.getInfoCallbacks[uuid] = completion
 
         let callback: uv_after_work_cb = { request, status in
-            print("AT LEASTIOOO***")
             guard let req = request?.pointee.data.assumingMemoryBound(to: json_request_t.self).pointee else {
                 // There is really nothing left to do here. We don't have a request structure and therefore don't have
                 // the handle we need in order to run the callback...
@@ -216,11 +250,11 @@ public class LibStorj {
             free(req.handle)
         }
 
-        var e = env.get()
+        var e = storjEnv.get()
         let dupUUID = strdup(uuid)
         storj_bridge_get_info(&e, UnsafeMutableRawPointer(mutating: dupUUID), callback)
 
         // Run the uv loop
-        env.executeLoop()
+        storjEnv.executeLoop()
     }
 }

@@ -11,13 +11,22 @@ public class StorjHTTPOptions: CStruct {
 
     var httpOptions: StructType
 
+    /// Saves a list of allocated memory pointers which must be freed before
+    /// deinitializing this instance
+    var allocatedPointers: [UnsafeMutableRawPointer] = []
+
     public var userAgent: String {
         get {
             return String(cString: httpOptions.user_agent)
         }
         set {
-            free(UnsafeMutablePointer(mutating: httpOptions.user_agent))
-            httpOptions.user_agent = UnsafePointer(strdup(newValue))
+            let newPointer = strdup(newValue)
+            httpOptions.user_agent = UnsafePointer(newPointer)
+
+            // Add the new memory pointer to the allocated pointers array
+            if let newPointer = newPointer {
+                allocatedPointers.append(newPointer)
+            }
         }
     }
 
@@ -29,8 +38,13 @@ public class StorjHTTPOptions: CStruct {
             return nil
         }
         set {
-            free(UnsafeMutablePointer(mutating: httpOptions.proxy_url))
-            httpOptions.proxy_url = newValue != nil ? UnsafePointer(strdup(newValue)) : nil
+            let newPointer = newValue != nil ? strdup(newValue) : nil
+            httpOptions.proxy_url = UnsafePointer(newPointer)
+
+            // Add the new memory pointer to the allocated pointers array
+            if let newPointer = newPointer {
+                allocatedPointers.append(newPointer)
+            }
         }
     }
 
@@ -42,8 +56,13 @@ public class StorjHTTPOptions: CStruct {
             return nil
         }
         set {
-            free(UnsafeMutablePointer(mutating: httpOptions.cainfo_path))
-            httpOptions.cainfo_path = newValue != nil ? UnsafePointer(strdup(newValue)) : nil
+            let newPointer = newValue != nil ? strdup(newValue) : nil
+            httpOptions.cainfo_path = UnsafePointer(newPointer)
+
+            // Add the new memory pointer to the allocated pointers array
+            if let newPointer = newPointer {
+                allocatedPointers.append(newPointer)
+            }
         }
     }
 
@@ -79,15 +98,30 @@ public class StorjHTTPOptions: CStruct {
     /// - parameter userAgent: The user agent
     /// - parameter proxyUrl: The proxy, if any.
     public convenience init(userAgent: String = "libstorj/0.0.1", proxyUrl: String? = nil, cainfoPath: String? = nil, lowSpeedLimit: UInt64 = UInt64(STORJ_LOW_SPEED_LIMIT), lowSpeedTime: UInt64 = UInt64(STORJ_LOW_SPEED_TIME), timeout: UInt64 = UInt64(STORJ_HTTP_TIMEOUT)) {
+        let userAgentPointer = strdup(userAgent)
+        let proxyUrlPointer = proxyUrl != nil ? strdup(proxyUrl) : nil
+        let cainfoPathPointer = cainfoPath != nil ? strdup(cainfoPath) : nil
+
         let options = StructType(
-            user_agent: strdup(userAgent),
-            proxy_url: proxyUrl != nil ? strdup(proxyUrl) : nil,
-            cainfo_path: cainfoPath != nil ? strdup(cainfoPath) : nil,
+            user_agent: userAgentPointer,
+            proxy_url: proxyUrlPointer,
+            cainfo_path: cainfoPathPointer,
             low_speed_limit: lowSpeedLimit,
             low_speed_time: lowSpeedTime,
             timeout: timeout
         )
         self.init(type: options)
+
+        // Add allocated memory pointers to allocated pointers array
+        if let userAgentPointer = userAgentPointer {
+            allocatedPointers.append(userAgentPointer)
+        }
+        if let proxyUrlPointer = proxyUrlPointer {
+            allocatedPointers.append(proxyUrlPointer)
+        }
+        if let cainfoPathPointer = cainfoPathPointer {
+            allocatedPointers.append(cainfoPathPointer)
+        }
     }
 
     init(type: StructType) {
@@ -99,8 +133,8 @@ public class StorjHTTPOptions: CStruct {
     }
 
     deinit {
-        free(UnsafeMutablePointer(mutating: httpOptions.user_agent))
-        free(UnsafeMutablePointer(mutating: httpOptions.proxy_url))
-        free(UnsafeMutablePointer(mutating: httpOptions.cainfo_path))
+        for p in allocatedPointers {
+            free(p)
+        }
     }
 }

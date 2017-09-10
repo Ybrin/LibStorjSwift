@@ -19,7 +19,11 @@ class LibStorjTests: XCTestCase {
     var libStorj: LibStorj!
 
     override func setUp() {
-        libStorj = LibStorj()
+        let b = StorjBridgeOptions(proto: .https, host: "api.storj.io", port: 443)
+
+        libStorj = LibStorj(options: b)
+
+        XCTAssertNotNil(libStorj)
     }
 
     func testMnemonic() throws {
@@ -34,19 +38,11 @@ class LibStorjTests: XCTestCase {
     }
 
     func testGetInfo() throws {
-        let b = StorjBridgeOptions(proto: .https, host: "api.storj.io", port: 443)
-
-        let env = libStorj.storjInitEnv(options: b)
-
-        XCTAssertNotNil(env)
-
-        libStorj.storjBridgeGetInfo(env: env!) { (success, req) in
+        libStorj.storjBridgeGetInfo() { (success, req) in
             print("PRINTING SUCCESS: \(success)")
             print("SUCCESS!")
             let resp = try? req.response?.serialize().makeString() ?? "***"
             print(resp ?? "***")
         }
-
-        print(env!.get().loop.pointee.active_handles)
     }
 }

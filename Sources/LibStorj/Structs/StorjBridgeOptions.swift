@@ -15,14 +15,23 @@ public class StorjBridgeOptions: CStruct {
 
     var bridgeOptions: StructType
 
+    /// Saves a list of allocated memory pointers which must be freed before
+    /// deinitializing this instance
+    var allocatedPointers: [UnsafeMutableRawPointer] = []
+
     public var proto: StorjBridgeOptionsProto? {
         get {
             return StorjBridgeOptionsProto(rawValue: String(cString: bridgeOptions.proto))
         }
         set {
             if let newValue = newValue {
-                free(UnsafeMutablePointer(mutating: bridgeOptions.proto))
-                bridgeOptions.proto = UnsafePointer(strdup(newValue.rawValue))
+                let newPointer = strdup(newValue.rawValue)
+                bridgeOptions.proto = UnsafePointer(newPointer)
+
+                // Add the new memory pointer to the allocated pointers array
+                if let newPointer = newPointer {
+                    allocatedPointers.append(newPointer)
+                }
             }
         }
     }
@@ -32,8 +41,13 @@ public class StorjBridgeOptions: CStruct {
             return String(cString: bridgeOptions.host)
         }
         set {
-            free(UnsafeMutablePointer(mutating: bridgeOptions.host))
-            bridgeOptions.host = UnsafePointer(strdup(newValue))
+            let newPointer = strdup(newValue)
+            bridgeOptions.host = UnsafePointer(newPointer)
+
+            // Add the new memory pointer to the allocated pointers array
+            if let newPointer = newPointer {
+                allocatedPointers.append(newPointer)
+            }
         }
     }
 
@@ -54,8 +68,13 @@ public class StorjBridgeOptions: CStruct {
             return nil
         }
         set {
-            free(UnsafeMutablePointer(mutating: bridgeOptions.user))
-            bridgeOptions.user = newValue != nil ? UnsafePointer(strdup(newValue)) : nil
+            let newPointer = newValue != nil ? strdup(newValue) : nil
+            bridgeOptions.user = UnsafePointer(newPointer)
+
+            // Add the new memory pointer to the allocated pointers array
+            if let newPointer = newPointer {
+                allocatedPointers.append(newPointer)
+            }
         }
     }
 
@@ -67,20 +86,44 @@ public class StorjBridgeOptions: CStruct {
             return nil
         }
         set {
-            free(UnsafeMutablePointer(mutating: bridgeOptions.pass))
-            bridgeOptions.pass = newValue != nil ? UnsafePointer(strdup(newValue)) : nil
+            let newPointer = newValue != nil ? strdup(newValue) : nil
+            bridgeOptions.pass = UnsafePointer(newPointer)
+
+            // Add the new memory pointer to the allocated pointers array
+            if let newPointer = newPointer {
+                allocatedPointers.append(newPointer)
+            }
         }
     }
 
     public convenience init(proto: StorjBridgeOptionsProto, host: String, port: Int32, user: String? = nil, pass: String? = nil) {
+        let protoPointer = strdup(proto.rawValue)
+        let hostPointer = strdup(host)
+        let userPointer = user != nil ? strdup(user) : nil
+        let passPointer = pass != nil ? strdup(pass) : nil
+
         let options = StructType(
-            proto: strdup(proto.rawValue),
-            host: strdup(host),
+            proto: protoPointer,
+            host: hostPointer,
             port: port,
-            user: user != nil ? strdup(user) : nil,
-            pass: pass != nil ? strdup(pass) : nil
+            user: userPointer,
+            pass: passPointer
         )
         self.init(type: options)
+
+        // Add allocated memory pointers to allocated pointers array
+        if let protoPointer = protoPointer {
+            allocatedPointers.append(protoPointer)
+        }
+        if let hostPointer = hostPointer {
+            allocatedPointers.append(hostPointer)
+        }
+        if let userPointer = userPointer {
+            allocatedPointers.append(userPointer)
+        }
+        if let passPointer = passPointer {
+            allocatedPointers.append(passPointer)
+        }
     }
 
     init(type: StructType) {
@@ -92,10 +135,9 @@ public class StorjBridgeOptions: CStruct {
     }
 
     deinit {
-        free(UnsafeMutablePointer(mutating: bridgeOptions.proto))
-        free(UnsafeMutablePointer(mutating: bridgeOptions.host))
-        free(UnsafeMutablePointer(mutating: bridgeOptions.user))
-        free(UnsafeMutablePointer(mutating: bridgeOptions.pass))
+        for p in allocatedPointers {
+            free(p)
+        }
     }
 }
 

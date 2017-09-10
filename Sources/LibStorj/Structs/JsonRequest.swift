@@ -16,6 +16,10 @@ public class JsonRequest: CStruct {
 
     var jsonRequest: StructType
 
+    /// Saves a list of allocated memory pointers which must be freed before
+    /// deinitializing this instance
+    var allocatedPointers: [UnsafeMutableRawPointer] = []
+
     public var httpOptions: StorjHTTPOptions {
         get {
             return StorjHTTPOptions(type: jsonRequest.http_options.pointee)
@@ -43,8 +47,13 @@ public class JsonRequest: CStruct {
             return String(cString: jsonRequest.method)
         }
         set {
-            free(UnsafeMutablePointer(mutating: jsonRequest.method))
-            jsonRequest.method = strdup(newValue)
+            let newPointer = strdup(newValue)
+            jsonRequest.method = newPointer
+
+            // Add the new memory pointer to the allocated pointers array
+            if let newPointer = newPointer {
+                allocatedPointers.append(newPointer)
+            }
         }
     }
 
@@ -53,8 +62,13 @@ public class JsonRequest: CStruct {
             return String(cString: jsonRequest.path)
         }
         set {
-            free(UnsafeMutablePointer(mutating: jsonRequest.path))
-            jsonRequest.path = strdup(newValue)
+            let newPointer = strdup(newValue)
+            jsonRequest.path = newPointer
+
+            // Add the new memory pointer to the allocated pointers array
+            if let newPointer = newPointer {
+                allocatedPointers.append(newPointer)
+            }
         }
     }
 
@@ -114,13 +128,16 @@ public class JsonRequest: CStruct {
         errorCode: Int32,
         statusCode: Int32
         ) {
+        let methodPointer = strdup(method)
+        let pathPointer = strdup(path)
+
         var h = httpOptions.get()
         var o = options.get()
         let out = StructType(
             http_options: &h,
             options: &o,
-            method: strdup(method),
-            path: strdup(path),
+            method: methodPointer,
+            path: pathPointer,
             auth: auth,
             body: body.jsonObject(),
             response: response.jsonObject(),
@@ -130,6 +147,14 @@ public class JsonRequest: CStruct {
         )
 
         self.init(type: out)
+
+        // Add allocated memory pointers to allocated pointers array
+        if let methodPointer = methodPointer {
+            allocatedPointers.append(methodPointer)
+        }
+        if let pathPointer = pathPointer {
+            allocatedPointers.append(pathPointer)
+        }
     }
 
     init(type: StructType) {
@@ -141,7 +166,8 @@ public class JsonRequest: CStruct {
     }
 
     deinit {
-        free(UnsafeMutablePointer(mutating: jsonRequest.method))
-        free(UnsafeMutablePointer(mutating: jsonRequest.path))
+        for p in allocatedPointers {
+            free(p)
+        }
     }
 }
