@@ -52,8 +52,16 @@ public class GetBucketsRequest: CStruct {
         return JSON(jsonObject: jsonRequest.response)
     }
 
-    public var buckets: StorjBucketMeta {
-        return StorjBucketMeta(type: jsonRequest.buckets.pointee)
+    public var buckets: [StorjBucketMeta] {
+        var bs = [StorjBucketMeta]()
+
+        let count = totalBuckets
+        for i: UInt32 in 0 ..< count {
+            let p = jsonRequest.buckets + Int(i)
+            bs.append(StorjBucketMeta(type: p.pointee))
+        }
+
+        return bs
     }
 
     public var totalBuckets: UInt32 {

@@ -61,6 +61,7 @@ class LibStorjTests: XCTestCase {
             print("PRINTING SUCCESS: \(success)")
             print("SUCCESS!")
             let resp = try? req.response?.serialize().makeString() ?? "***"
+            print(req.buckets[0].decrypted)
             print(resp ?? "***")
         }
 
