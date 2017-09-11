@@ -31,7 +31,7 @@ public class JsonRequest: CStruct {
         }
     }
 
-    public var options: StorjBridgeOptions {
+    public var bridgeOptions: StorjBridgeOptions {
         get {
             return StorjBridgeOptions(type: jsonRequest.options.pointee)
         }
@@ -119,7 +119,7 @@ public class JsonRequest: CStruct {
 
     public convenience init(
         httpOptions: StorjHTTPOptions,
-        options: StorjBridgeOptions,
+        bridgeOptions: StorjBridgeOptions,
         method: String,
         path: String,
         auth: Bool,
@@ -132,7 +132,7 @@ public class JsonRequest: CStruct {
         let pathPointer = strdup(path)
 
         var h = httpOptions.get()
-        var o = options.get()
+        var o = bridgeOptions.get()
         let out = StructType(
             http_options: &h,
             options: &o,

@@ -1,8 +1,8 @@
 //
-//  GetBucketsRequest.swift
+//  CreateBucketRequest.swift
 //  LibStorj
 //
-//  Created by Koray Koska on 10/09/2017.
+//  Created by Koray Koska on 11/09/2017.
 //
 //
 
@@ -10,9 +10,9 @@ import Foundation
 import CLibStorj
 import JSON
 
-public class GetBucketsRequest: CStruct {
+public class CreateBucketRequest: CStruct {
 
-    public typealias StructType = get_buckets_request_t
+    public typealias StructType = create_bucket_request_t
 
     var jsonRequest: StructType
 
@@ -29,43 +29,23 @@ public class GetBucketsRequest: CStruct {
     }
 
     public var bridgeOptions: StorjBridgeOptions {
-        return StorjBridgeOptions(type: jsonRequest.options.pointee)
+        return StorjBridgeOptions(type: jsonRequest.bridge_options.pointee)
     }
 
-    public var method: String {
-        return String(cString: jsonRequest.method)
+    public var bucketName: String {
+        return String(cString: jsonRequest.bucket_name)
     }
 
-    public var path: String {
-        return String(cString: jsonRequest.path)
-    }
-
-    public var auth: Bool {
-        return jsonRequest.auth
-    }
-
-    public var body: JSON? {
-        return JSON(jsonObject: jsonRequest.body)
+    public var encryptedBucketName: String {
+        return String(cString: jsonRequest.encrypted_bucket_name)
     }
 
     public var response: JSON? {
         return JSON(jsonObject: jsonRequest.response)
     }
 
-    public var buckets: [StorjBucketMeta] {
-        var bs = [StorjBucketMeta]()
-
-        let count = totalBuckets
-        for i: UInt32 in 0 ..< count {
-            let p = jsonRequest.buckets + Int(i)
-            bs.append(StorjBucketMeta(type: p.pointee))
-        }
-
-        return bs
-    }
-
-    public var totalBuckets: UInt32 {
-        return jsonRequest.total_buckets
+    public var bucket: StorjBucketMeta {
+        return StorjBucketMeta(type: jsonRequest.bucket.pointee)
     }
 
     public var errorCode: Int32 {
@@ -83,7 +63,7 @@ public class GetBucketsRequest: CStruct {
     public func get() -> StructType {
         return jsonRequest
     }
-    
+
     deinit {
         for p in allocatedPointers {
             free(p)

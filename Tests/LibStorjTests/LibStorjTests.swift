@@ -14,20 +14,20 @@ class LibStorjTests: XCTestCase {
     static let allTests = [
         ("testMnemonic", testMnemonic),
         ("testGetInfo", testGetInfo),
-        ("testGetBuckets", testGetBuckets)
+        ("testBuckets", testBuckets)
     ]
 
     var libStorj: LibStorj!
 
     override func setUp() {
-        let o = LibStorj.decryptReadAuth(filepath: "$PATH", passphrase: "$PASS")
+        let user = "libstorj@trash-mail.com"
+        let pass = "libstorj"
+        let mnemonic = "punch shed page indicate rival same defense first oppose focus cricket asthma park since liberty menu immune fix item kick palace friend gloom maple"
 
-        XCTAssertNotNil(o)
+        let b = StorjBridgeOptions(proto: .https, host: "api.storj.io", port: 443, user: user, pass: pass)
+        let e = StorjEncryptOptions(mnemonic: mnemonic)
 
-        let b = StorjBridgeOptions(proto: .https, host: "api.storj.io", port: 443, user: o?.bridgeUser, pass: o?.bridgePass)
-        let e = StorjEncryptOptions(mnemonic: o!.mnemonic)
-
-        libStorj = LibStorj(options: b, encryptOptions: e)
+        libStorj = LibStorj(bridgeOptions: b, encryptOptions: e)
 
         XCTAssertNotNil(libStorj)
     }
@@ -56,15 +56,19 @@ class LibStorjTests: XCTestCase {
         XCTAssert(success)
     }
 
-    func testGetBuckets() throws {
-        let success = libStorj.getBuckets { (success, req) in
-            print("PRINTING SUCCESS: \(success)")
-            print("SUCCESS!")
+    func testBuckets() throws {
+        let createBucketSuccess = libStorj.createBucket(name: "storj_bucket") { (success, req) in
+            XCTAssertEqual(req.bucketName, "storj_bucket")
+            XCTAssert(success)
+            XCTAssertEqual(req.statusCode, 201)
+        }
+        XCTAssert(createBucketSuccess)
+
+        let getBucketsSuccess = libStorj.getBuckets { (success, req) in
             let resp = try? req.response?.serialize().makeString() ?? "***"
             print(req.buckets[0].decrypted)
             print(resp ?? "***")
         }
-
-        XCTAssert(success)
+        XCTAssert(getBucketsSuccess)
     }
 }

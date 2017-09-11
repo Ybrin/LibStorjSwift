@@ -9,19 +9,22 @@
 import Foundation
 import CLibStorj
 
-public class LibStorj {
+public final class LibStorj {
 
     public let storjEnv: StorjEnv
 
     /**
-     * Initialize a Storj environment and returns an instance of LibStorj
+     * Initializes a Storj environment and returns an instance of LibStorj
      * which holds and wraps all functions from libstorj.
      *
      * This will setup an event loop for queueing further actions, as well
      * as define necessary configuration options for communicating with Storj
      * bridge, and for encrypting/decrypting files.
      *
-     * - parameter options: Storj Bridge API options
+     * The values `user` and `pass` for the `StorjBridgeOptions` must be set
+     * or any authenticated request will fail.
+     *
+     * - parameter bridgeOptions: Storj Bridge API options
      * - parameter encryptOptions: File encryption options
      * - parameter httpOptions: HTTP settings
      * - parameter logOptions: Logging settings
@@ -29,12 +32,33 @@ public class LibStorj {
      * - returns: nil on error, an instance of LibStorj otherwise.
      */
     public init?(
-        options: StorjBridgeOptions,
-        encryptOptions: StorjEncryptOptions? = nil,
+        bridgeOptions: StorjBridgeOptions,
+        encryptOptions: StorjEncryptOptions,
         httpOptions: StorjHTTPOptions = StorjHTTPOptions(),
         logOptions: StorjLogOptions = StorjLogOptions()
         ) {
-        if let s = LibStorj.initEnv(options: options, encryptOptions: encryptOptions, httpOptions: httpOptions, logOptions: logOptions) {
+        if let s = LibStorj.initEnv(bridgeOptions: bridgeOptions, encryptOptions: encryptOptions, httpOptions: httpOptions, logOptions: logOptions) {
+            self.storjEnv = s
+        } else {
+            return nil
+        }
+    }
+
+    /**
+     * An initializer without encryptOptions for non authenticated requests.
+     *
+     * **If you use this initializer for authenticated requests, they will fail!**
+     *
+     * The following requests are non authenticated:
+     * - getInfo
+     * - register
+     */
+    public init?(
+        bridgeOptions: StorjBridgeOptions,
+        httpOptions: StorjHTTPOptions = StorjHTTPOptions(),
+        logOptions: StorjLogOptions = StorjLogOptions()
+        ) {
+        if let s = LibStorj.initEnv(bridgeOptions: bridgeOptions, encryptOptions: nil, httpOptions: httpOptions, logOptions: logOptions) {
             self.storjEnv = s
         } else {
             return nil
@@ -53,7 +77,7 @@ public class LibStorj {
      * as define necessary configuration options for communicating with Storj
      * bridge, and for encrypting/decrypting files.
      *
-     * - parameter options: Storj Bridge API options
+     * - parameter bridgeOptions: Storj Bridge API options
      * - parameter encryptOptions: File encryption options
      * - parameter httpOptions: HTTP settings
      * - parameter logOptions: Logging settings
@@ -61,12 +85,12 @@ public class LibStorj {
      * - returns: A null value on error, otherwise a storj_env pointer.
      */
     static func initEnv(
-        options: StorjBridgeOptions,
+        bridgeOptions: StorjBridgeOptions,
         encryptOptions: StorjEncryptOptions?,
         httpOptions: StorjHTTPOptions,
         logOptions: StorjLogOptions
         ) -> StorjEnv? {
-        var o = options.get()
+        var o = bridgeOptions.get()
         var e = encryptOptions?.get()
         var h = httpOptions.get()
         var l = logOptions.get()
@@ -197,7 +221,7 @@ public class LibStorj {
      *
      * - returns: The new mnemonic if successful, nil otherwise
      */
-    public static func mnemonicGenerate(strength: UInt8) -> String? {
+    public static func mnemonicGenerate(strength: UInt16) -> String? {
         let buffer = UnsafeMutablePointer<UnsafeMutablePointer<Int8>?>.allocate(capacity: 1)
 
         defer {
@@ -245,8 +269,8 @@ public class LibStorj {
      * The network i/o is performed in a thread pool with a libuv loop, and the
      * response is available in the callback function.
      *
-     * - parameter completion: A function which will be called after the request was
-     *                         completed and a response was received.
+     * - parameter completion: A callback function which will be called after the
+     *                         request was completed and a response was received.
      *
      * - returns: True if the job was queued and executed successfully, in which case
      *         you can expect the callback to be exected. False otherwise, in which
@@ -294,6 +318,16 @@ public class LibStorj {
     /// As a key a UUID should be used. e.g.: UUID().uuidString
     static var getBucketsCallbacks: [String: ((_ success: Bool, _ request: GetBucketsRequest) -> Void)] = [:]
 
+    /**
+     * List available buckets for a user.
+     *
+     * - parameter completion: A callback function which will be called after the
+     *                         request was completed and a response was received.
+     *
+     * - returns: True if the job was queued and executed successfully, in which case
+     *         you can expect the callback to be exected. False otherwise, in which
+     *         case the execution of the callback function can't be guaranteed.
+     */
     public func getBuckets(completion: ((_ success: Bool, _ request: GetBucketsRequest) -> Void)? = nil) -> Bool {
         let uuid = UUID().uuidString
         LibStorj.getBucketsCallbacks[uuid] = completion
@@ -324,6 +358,60 @@ public class LibStorj {
         var e = storjEnv.get()
         let dupUUID = strdup(uuid)
         status = storj_bridge_get_buckets(&e, dupUUID, callback)
+
+        // Run the uv loop
+        status = storjEnv.executeLoop()
+        
+        return status == 0
+    }
+
+    /// A dictionary which holds all queued create-bucket callbacks.
+    /// These callbacks must be stored in a static data structure
+    /// in order to don't be bound to the context free C convention
+    /// functions.
+    /// Appenders are responsible for deleting the stored value after
+    /// it is not used any more.
+    /// As a key a UUID should be used. e.g.: UUID().uuidString
+    static var createBucketCallbacks: [String: ((_ success: Bool, _ request: CreateBucketRequest) -> Void)] = [:]
+
+    /**
+     * Create a bucket.
+     *
+     * - parameter name: The name of the bucket
+     * - parameter completion: A callback function which will be called after the
+     *                         request was completed and a response was received.
+     *
+     * - returns: True if the job was queued and executed successfully, in which case
+     *         you can expect the callback to be exected. False otherwise, in which
+     *         case the execution of the callback function can't be guaranteed.
+     */
+    public func createBucket(name: String, completion: ((_ success: Bool, _ request: CreateBucketRequest) -> Void)? = nil) -> Bool {
+        let uuid = UUID().uuidString
+        LibStorj.createBucketCallbacks[uuid] = completion
+
+        let callback: uv_after_work_cb = { request, status in
+            guard let reqPointer = request?.pointee.data.assumingMemoryBound(to: create_bucket_request_t.self) else {
+                // There is really nothing left to do here. We don't have a request structure and therefore don't have
+                // the handle we need in order to run the callback...
+                return
+            }
+            let req = reqPointer.pointee
+            let handle = String(cString: req.handle.assumingMemoryBound(to: Int8.self))
+
+            LibStorj.createBucketCallbacks[handle]?(status == 0, CreateBucketRequest(type: req))
+
+            // Delete callback after call
+            LibStorj.createBucketCallbacks[handle] = nil
+
+            // Free the handle
+            free(req.handle)
+        }
+
+        var status: Int32 = 1
+
+        var e = storjEnv.get()
+        let dupUUID = strdup(uuid)
+        status = storj_bridge_create_bucket(&e, strdup(name), dupUUID, callback)
 
         // Run the uv loop
         status = storjEnv.executeLoop()
