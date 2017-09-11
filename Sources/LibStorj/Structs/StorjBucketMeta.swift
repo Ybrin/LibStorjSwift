@@ -20,16 +20,25 @@ public class StorjBucketMeta: CStruct {
     /// deinitializing this instance
     var allocatedPointers: [UnsafeMutableRawPointer] = []
 
-    public var created: String {
-        return String(cString: bucketMeta.created)
+    public var created: String? {
+        if bucketMeta.created != nil {
+            return String(cString: bucketMeta.created)
+        }
+        return nil
     }
 
-    public var name: String {
-        return String(cString: bucketMeta.name)
+    public var name: String? {
+        if bucketMeta.name != nil {
+            return String(cString: bucketMeta.name)
+        }
+        return nil
     }
 
-    public var id: String {
-        return String(cString: bucketMeta.id)
+    public var id: String? {
+        if bucketMeta.id != nil {
+            return String(cString: bucketMeta.id)
+        }
+        return nil
     }
 
     public var decrypted: Bool {

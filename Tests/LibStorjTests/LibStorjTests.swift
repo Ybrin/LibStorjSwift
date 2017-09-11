@@ -61,13 +61,42 @@ class LibStorjTests: XCTestCase {
             XCTAssertEqual(req.bucketName, "storj_bucket")
             XCTAssert(success)
             XCTAssertEqual(req.statusCode, 201)
+
+            XCTAssertNotNil(req.bucket.created)
+
+            print("NULLLLL")
+            print()
+
+            XCTAssertNotNil(req.bucket.id)
+
+            let r = self.libStorj.getBucket(id: req.bucket.id!, completion: { (s, re) in
+                XCTAssert(s)
+
+                // Check id
+                XCTAssertEqual(req.bucket.id, re.response?["id"]?.string)
+
+                // Check created at key
+                XCTAssertEqual(req.bucket.created, re.response?["id"]?.string)
+            })
+            XCTAssert(r)
         }
         XCTAssert(createBucketSuccess)
 
         let getBucketsSuccess = libStorj.getBuckets { (success, req) in
-            let resp = try? req.response?.serialize().makeString() ?? "***"
-            print(req.buckets[0].decrypted)
-            print(resp ?? "***")
+            for b in req.buckets {
+                XCTAssertNotNil(b.id)
+                let deleted = self.libStorj.deleteBucket(id: b.id!, completion: { (s, re) in
+                    XCTAssert(s)
+                })
+                XCTAssert(deleted)
+            }
+
+            // All buckets should be deleted now
+            let bucketsSuccess = self.libStorj.getBuckets(completion: { (s, re) in
+                XCTAssert(s)
+                XCTAssertEqual(re.totalBuckets, 0)
+            })
+            XCTAssert(bucketsSuccess)
         }
         XCTAssert(getBucketsSuccess)
     }

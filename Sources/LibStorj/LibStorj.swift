@@ -352,16 +352,16 @@ public final class LibStorj {
             // Free the get buckets request
             storj_free_get_buckets_request(reqPointer)
         }
-        
+
         var status: Int32 = 1
-        
+
         var e = storjEnv.get()
         let dupUUID = strdup(uuid)
         status = storj_bridge_get_buckets(&e, dupUUID, callback)
 
         // Run the uv loop
         status = storjEnv.executeLoop()
-        
+
         return status == 0
     }
 
@@ -412,6 +412,116 @@ public final class LibStorj {
         var e = storjEnv.get()
         let dupUUID = strdup(uuid)
         status = storj_bridge_create_bucket(&e, strdup(name), dupUUID, callback)
+
+        // Run the uv loop
+        status = storjEnv.executeLoop()
+
+        return status == 0
+    }
+
+    /// A dictionary which holds all queued delete-bucket callbacks.
+    /// These callbacks must be stored in a static data structure
+    /// in order to don't be bound to the context free C convention
+    /// functions.
+    /// Appenders are responsible for deleting the stored value after
+    /// it is not used any more.
+    /// As a key a UUID should be used. e.g.: UUID().uuidString
+    static var deleteBucketCallbacks: [String: ((_ success: Bool, _ request: JsonRequest) -> Void)] = [:]
+
+    /**
+     * Deletes a bucket.
+     *
+     * - parameter id: The bucket id
+     * - parameter completion: A callback function which will be called after the
+     *                         request was completed and a response was received.
+     *
+     * - returns: True if the job was queued and executed successfully, in which case
+     *         you can expect the callback to be exected. False otherwise, in which
+     *         case the execution of the callback function can't be guaranteed.
+     */
+    public func deleteBucket(id: String, completion: ((_ success: Bool, _ request: JsonRequest) -> Void)? = nil) -> Bool {
+        let uuid = UUID().uuidString
+        LibStorj.deleteBucketCallbacks[uuid] = completion
+
+        let callback: uv_after_work_cb = { request, status in
+            guard let req = request?.pointee.data.assumingMemoryBound(to: json_request_t.self).pointee else {
+                // There is really nothing left to do here. We don't have a request structure and therefore don't have
+                // the handle we need in order to run the callback...
+                return
+            }
+            let handle = String(cString: req.handle.assumingMemoryBound(to: Int8.self))
+
+            LibStorj.deleteBucketCallbacks[handle]?(status == 0, JsonRequest(type: req))
+
+            // Delete callback after call
+            LibStorj.deleteBucketCallbacks[handle] = nil
+
+            // Free the handle
+            free(req.handle)
+        }
+
+        var status: Int32 = 1
+
+        var e = storjEnv.get()
+        let dupUUID = strdup(uuid)
+        // We can use id instead of strdup(id) as storj_bridge_delete_bucket
+        // copies the id and doesn't use the original pointer anymore.
+        status = storj_bridge_delete_bucket(&e, id, dupUUID, callback)
+
+        // Run the uv loop
+        status = storjEnv.executeLoop()
+
+        return status == 0
+    }
+
+    /// A dictionary which holds all queued get-bucket callbacks.
+    /// These callbacks must be stored in a static data structure
+    /// in order to don't be bound to the context free C convention
+    /// functions.
+    /// Appenders are responsible for deleting the stored value after
+    /// it is not used any more.
+    /// As a key a UUID should be used. e.g.: UUID().uuidString
+    static var getBucketCallbacks: [String: ((_ success: Bool, _ request: JsonRequest) -> Void)] = [:]
+
+    /**
+     * Get a info of specific bucket.
+     *
+     * - parameter id: The bucket id
+     * - parameter completion: A callback function which will be called after the
+     *                         request was completed and a response was received.
+     *
+     * - returns: True if the job was queued and executed successfully, in which case
+     *         you can expect the callback to be exected. False otherwise, in which
+     *         case the execution of the callback function can't be guaranteed.
+     */
+    public func getBucket(id: String, completion: ((_ success: Bool, _ request: JsonRequest) -> Void)? = nil) -> Bool {
+        let uuid = UUID().uuidString
+        LibStorj.getBucketCallbacks[uuid] = completion
+
+        let callback: uv_after_work_cb = { request, status in
+            guard let req = request?.pointee.data.assumingMemoryBound(to: json_request_t.self).pointee else {
+                // There is really nothing left to do here. We don't have a request structure and therefore don't have
+                // the handle we need in order to run the callback...
+                return
+            }
+            let handle = String(cString: req.handle.assumingMemoryBound(to: Int8.self))
+
+            LibStorj.getBucketCallbacks[handle]?(status == 0, JsonRequest(type: req))
+
+            // Delete callback after call
+            LibStorj.getBucketCallbacks[handle] = nil
+
+            // Free the handle
+            free(req.handle)
+        }
+
+        var status: Int32 = 1
+
+        var e = storjEnv.get()
+        let dupUUID = strdup(uuid)
+        // We can use id instead of strdup(id) as storj_bridge_delete_bucket
+        // copies the id and doesn't use the original pointer anymore.
+        status = storj_bridge_get_bucket(&e, id, dupUUID, callback)
 
         // Run the uv loop
         status = storjEnv.executeLoop()
