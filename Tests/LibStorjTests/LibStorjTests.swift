@@ -57,15 +57,13 @@ class LibStorjTests: XCTestCase {
     }
 
     func testBuckets() throws {
-        let createBucketSuccess = libStorj.createBucket(name: "storj_bucket") { (success, req) in
-            XCTAssertEqual(req.bucketName, "storj_bucket")
+        let buckName = UUID().uuidString
+        let createBucketSuccess = libStorj.createBucket(name: buckName) { (success, req) in
+            XCTAssertEqual(req.bucketName, buckName)
             XCTAssert(success)
             XCTAssertEqual(req.statusCode, 201)
 
-            XCTAssertNotNil(req.bucket.created)
-
-            print("NULLLLL")
-            print()
+            XCTAssertNotNil(req.bucket.name)
 
             XCTAssertNotNil(req.bucket.id)
 
@@ -74,9 +72,6 @@ class LibStorjTests: XCTestCase {
 
                 // Check id
                 XCTAssertEqual(req.bucket.id, re.response?["id"]?.string)
-
-                // Check created at key
-                XCTAssertEqual(req.bucket.created, re.response?["id"]?.string)
             })
             XCTAssert(r)
         }
@@ -85,6 +80,7 @@ class LibStorjTests: XCTestCase {
         let getBucketsSuccess = libStorj.getBuckets { (success, req) in
             for b in req.buckets {
                 XCTAssertNotNil(b.id)
+                XCTAssertNotNil(b.created)
                 let deleted = self.libStorj.deleteBucket(id: b.id!, completion: { (s, re) in
                     XCTAssert(s)
                 })
