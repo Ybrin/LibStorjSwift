@@ -747,4 +747,8 @@ public final class LibStorj {
         
         return status == 0
     }
+
+    public func uploadFile() {
+
+    }
 }
