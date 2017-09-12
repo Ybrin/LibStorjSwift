@@ -639,4 +639,112 @@ public final class LibStorj {
         
         return status == 0
     }
+
+    /// A dictionary which holds all queued get-file-info callbacks.
+    /// These callbacks must be stored in a static data structure
+    /// in order to don't be bound to the context free C convention
+    /// functions.
+    /// Appenders are responsible for deleting the stored value after
+    /// it is not used any more.
+    /// As a key a UUID should be used. e.g.: UUID().uuidString
+    static var getFileInfoCallbacks: [String: ((_ success: Bool, _ request: JsonRequest) -> Void)] = [:]
+
+    /**
+     * Get metadata for a file
+     *
+     * - parameter bucketId: The bucket id
+     * - parameter fileId: The file id
+     * - parameter completion: A callback function which will be called after the
+     *                         request was completed and a response was received.
+     *
+     * - returns: True if the job was queued and executed successfully, in which case
+     *         you can expect the callback to be exected. False otherwise, in which
+     *         case the execution of the callback function can't be guaranteed.
+     */
+    public func getBucket(bucketId: String, fileId: String, completion: ((_ success: Bool, _ request: JsonRequest) -> Void)? = nil) -> Bool {
+        let uuid = UUID().uuidString
+        LibStorj.getFileInfoCallbacks[uuid] = completion
+
+        let callback: uv_after_work_cb = { request, status in
+            guard let req = request?.pointee.data.assumingMemoryBound(to: json_request_t.self).pointee else {
+                // There is really nothing left to do here. We don't have a request structure and therefore don't have
+                // the handle we need in order to run the callback...
+                return
+            }
+            let handle = String(cString: req.handle.assumingMemoryBound(to: Int8.self))
+
+            LibStorj.getFileInfoCallbacks[handle]?(status == 0, JsonRequest(type: req))
+
+            // Delete callback after call
+            LibStorj.getFileInfoCallbacks[handle] = nil
+
+            // Free the handle
+            free(req.handle)
+        }
+
+        var status: Int32 = 1
+
+        var e = storjEnv.get()
+        let dupUUID = strdup(uuid)
+        status = storj_bridge_get_file_info(&e, bucketId, fileId, dupUUID, callback)
+
+        // Run the uv loop
+        status = storjEnv.executeLoop()
+        
+        return status == 0
+    }
+
+    /// A dictionary which holds all queued list-mirrors callbacks.
+    /// These callbacks must be stored in a static data structure
+    /// in order to don't be bound to the context free C convention
+    /// functions.
+    /// Appenders are responsible for deleting the stored value after
+    /// it is not used any more.
+    /// As a key a UUID should be used. e.g.: UUID().uuidString
+    static var listMirrorsCallbacks: [String: ((_ success: Bool, _ request: JsonRequest) -> Void)] = [:]
+
+    /**
+     * Get mirror data for a file
+     *
+     * - parameter bucketId: The bucket id
+     * - parameter fileId: The file id
+     * - parameter completion: A callback function which will be called after the
+     *                         request was completed and a response was received.
+     *
+     * - returns: True if the job was queued and executed successfully, in which case
+     *         you can expect the callback to be exected. False otherwise, in which
+     *         case the execution of the callback function can't be guaranteed.
+     */
+    public func listMirrors(bucketId: String, fileId: String, completion: ((_ success: Bool, _ request: JsonRequest) -> Void)? = nil) -> Bool {
+        let uuid = UUID().uuidString
+        LibStorj.listMirrorsCallbacks[uuid] = completion
+
+        let callback: uv_after_work_cb = { request, status in
+            guard let req = request?.pointee.data.assumingMemoryBound(to: json_request_t.self).pointee else {
+                // There is really nothing left to do here. We don't have a request structure and therefore don't have
+                // the handle we need in order to run the callback...
+                return
+            }
+            let handle = String(cString: req.handle.assumingMemoryBound(to: Int8.self))
+
+            LibStorj.listMirrorsCallbacks[handle]?(status == 0, JsonRequest(type: req))
+
+            // Delete callback after call
+            LibStorj.listMirrorsCallbacks[handle] = nil
+
+            // Free the handle
+            free(req.handle)
+        }
+
+        var status: Int32 = 1
+
+        var e = storjEnv.get()
+        let dupUUID = strdup(uuid)
+        status = storj_bridge_list_mirrors(&e, bucketId, fileId, dupUUID, callback)
+
+        // Run the uv loop
+        status = storjEnv.executeLoop()
+        
+        return status == 0
+    }
 }
