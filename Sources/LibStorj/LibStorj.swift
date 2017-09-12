@@ -528,4 +528,115 @@ public final class LibStorj {
         
         return status == 0
     }
+
+    /// A dictionary which holds all queued list-files callbacks.
+    /// These callbacks must be stored in a static data structure
+    /// in order to don't be bound to the context free C convention
+    /// functions.
+    /// Appenders are responsible for deleting the stored value after
+    /// it is not used any more.
+    /// As a key a UUID should be used. e.g.: UUID().uuidString
+    static var listFilesCallbacks: [String: ((_ success: Bool, _ request: ListFilesRequest) -> Void)] = [:]
+
+    /**
+     * Get a list of all files in a bucket.
+     *
+     * - parameter bucketId: The bucket id
+     * - parameter completion: A callback function which will be called after the
+     *                         request was completed and a response was received.
+     *
+     * - returns: True if the job was queued and executed successfully, in which case
+     *         you can expect the callback to be exected. False otherwise, in which
+     *         case the execution of the callback function can't be guaranteed.
+     */
+    public func listFiles(bucketId: String, completion: ((_ success: Bool, _ request: ListFilesRequest) -> Void)? = nil) -> Bool {
+        let uuid = UUID().uuidString
+        LibStorj.listFilesCallbacks[uuid] = completion
+
+        let callback: uv_after_work_cb = { request, status in
+            guard let reqPointer = request?.pointee.data.assumingMemoryBound(to: list_files_request_t.self) else {
+                // There is really nothing left to do here. We don't have a request structure and therefore don't have
+                // the handle we need in order to run the callback...
+                return
+            }
+            let req = reqPointer.pointee
+            let handle = String(cString: req.handle.assumingMemoryBound(to: Int8.self))
+
+            LibStorj.listFilesCallbacks[handle]?(status == 0, ListFilesRequest(type: req))
+
+            // Delete callback after call
+            LibStorj.listFilesCallbacks[handle] = nil
+
+            // Free the handle
+            free(req.handle)
+
+            // Free the get buckets request
+            storj_free_list_files_request(reqPointer)
+        }
+
+        var status: Int32 = 1
+
+        var e = storjEnv.get()
+        let dupUUID = strdup(uuid)
+        status = storj_bridge_list_files(&e, bucketId, dupUUID, callback)
+
+        // Run the uv loop
+        status = storjEnv.executeLoop()
+        
+        return status == 0
+    }
+
+    /// A dictionary which holds all queued delete-file callbacks.
+    /// These callbacks must be stored in a static data structure
+    /// in order to don't be bound to the context free C convention
+    /// functions.
+    /// Appenders are responsible for deleting the stored value after
+    /// it is not used any more.
+    /// As a key a UUID should be used. e.g.: UUID().uuidString
+    static var deleteFileCallbacks: [String: ((_ success: Bool, _ request: JsonRequest) -> Void)] = [:]
+
+    /**
+     * Delete a file in a bucket.
+     *
+     * - parameter bucketId: The bucket id
+     * - parameter fileId: The file id
+     * - parameter completion: A callback function which will be called after the
+     *                         request was completed and a response was received.
+     *
+     * - returns: True if the job was queued and executed successfully, in which case
+     *         you can expect the callback to be exected. False otherwise, in which
+     *         case the execution of the callback function can't be guaranteed.
+     */
+    public func deleteFile(bucketId: String, fileId: String, completion: ((_ success: Bool, _ request: JsonRequest) -> Void)? = nil) -> Bool {
+        let uuid = UUID().uuidString
+        LibStorj.deleteFileCallbacks[uuid] = completion
+
+        let callback: uv_after_work_cb = { request, status in
+            guard let req = request?.pointee.data.assumingMemoryBound(to: json_request_t.self).pointee else {
+                // There is really nothing left to do here. We don't have a request structure and therefore don't have
+                // the handle we need in order to run the callback...
+                return
+            }
+            let handle = String(cString: req.handle.assumingMemoryBound(to: Int8.self))
+
+            LibStorj.deleteFileCallbacks[handle]?(status == 0, JsonRequest(type: req))
+
+            // Delete callback after call
+            LibStorj.deleteFileCallbacks[handle] = nil
+
+            // Free the handle
+            free(req.handle)
+        }
+
+        var status: Int32 = 1
+
+        var e = storjEnv.get()
+        let dupUUID = strdup(uuid)
+        status = storj_bridge_delete_file(&e, bucketId, fileId, dupUUID, callback)
+
+        // Run the uv loop
+        status = storjEnv.executeLoop()
+        
+        return status == 0
+    }
 }
