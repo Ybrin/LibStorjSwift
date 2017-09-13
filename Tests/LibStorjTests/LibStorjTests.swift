@@ -64,6 +64,7 @@ class LibStorjTests: XCTestCase {
             XCTAssertEqual(req.statusCode, 201)
 
             XCTAssertNotNil(req.bucket.name)
+            XCTAssertEqual(req.bucket.name, buckName)
 
             XCTAssertNotNil(req.bucket.id)
 
@@ -95,5 +96,41 @@ class LibStorjTests: XCTestCase {
             XCTAssert(bucketsSuccess)
         }
         XCTAssert(getBucketsSuccess)
+    }
+
+    func testFiles() throws {
+        // Create a tmp file
+
+        // Create tmp bucket
+        let buckName = UUID().uuidString
+        print("BUCKNAME: \(buckName)")
+        let createBucketSuccess = libStorj.createBucket(name: buckName) { (success, req) in
+            XCTAssert(success)
+            let id = req.bucket.id ?? ""
+            print("BUCKETID: \(id)")
+
+            let uploadSuccess = self.libStorj.uploadFile(
+                bucketId: id,
+                fileName: "blabla.txt",
+                filePath: "tmpPath",
+                progress: { (progress, bytes, totalBytes) in
+                    print("PROGRESS: \(progress)")
+                    print("BYTES: \(bytes)")
+                    print("TOTALBYTES: \(totalBytes)")},
+                completion: { success, fileId in
+                    XCTAssert(success)
+                    XCTAssertNotNil(fileId)
+                    print("FILEID: \(fileId ?? "***")")
+
+                    // Delete bucket after we are done...
+                    let deleted = self.libStorj.deleteBucket(id: id, completion: { (s, re) in
+                        XCTAssert(s)
+                    })
+                    XCTAssert(deleted)}
+            )
+
+            XCTAssert(uploadSuccess)
+        }
+        XCTAssert(createBucketSuccess)
     }
 }

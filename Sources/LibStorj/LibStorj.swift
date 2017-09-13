@@ -748,7 +748,105 @@ public final class LibStorj {
         return status == 0
     }
 
-    public func uploadFile() {
+    /// A dictionary which holds all queued progress callbacks.
+    /// These callbacks must be stored in a static data structure
+    /// in order to don't be bound to the context free C convention
+    /// functions.
+    /// Appenders are responsible for deleting the stored value after
+    /// it is not used any more.
+    /// As a key a UUID should be used. e.g.: UUID().uuidString
+    static var progressCallbacks: [String: ((_ progress: Double, _ bytes: UInt64, _ totalBytes: UInt64) -> Void)] = [:]
 
+    /// A dictionary which holds all queued finished-upload callbacks.
+    /// These callbacks must be stored in a static data structure
+    /// in order to don't be bound to the context free C convention
+    /// functions.
+    /// Appenders are responsible for deleting the stored value after
+    /// it is not used any more.
+    /// As a key a UUID should be used. e.g.: UUID().uuidString
+    static var finishedUploadCallbacks: [String: ((_ success: Bool, _ fileId: String?) -> Void)] = [:]
+
+    public func uploadFile(
+        bucketId: String,
+        fileName: String,
+        filePath: String,
+        prepareFrameLimit: Int32 = 1,
+        pushFrameLimit: Int32 = 64,
+        pushShardLimit: Int32 = 64,
+        reedSolomon: Bool = true,
+        progress: ((_ progress: Double, _ bytes: UInt64, _ totalBytes: UInt64) -> Void)? = nil,
+        completion: ((_ success: Bool, _ fileId: String?) -> Void)? = nil
+        ) -> Bool {
+        guard let f = fopen(filePath, "r") else {
+            return false
+        }
+
+        let uploadOpts = StorjUploadOpts(
+            prepareFrameLimit: prepareFrameLimit,
+            pushFrameLimit: pushFrameLimit,
+            pushShardLimit: pushShardLimit,
+            rs: reedSolomon,
+            bucketId: bucketId,
+            fileName: fileName,
+            fd: f
+        )
+        print("BUCKBUCK::: --> \(uploadOpts.bucketId ?? "***")")
+
+        guard let uploadState = malloc(MemoryLayout<storj_upload_state_t>.size) else {
+            return false
+        }
+        let state = uploadState.assumingMemoryBound(to: storj_upload_state_t.self)
+
+        // The handle
+        let uuid = UUID().uuidString
+
+        // Set the callbacks
+        LibStorj.progressCallbacks[uuid] = progress
+        LibStorj.finishedUploadCallbacks[uuid] = completion
+
+        let progressCallback: storj_progress_cb = { progress, bytes, totalBytes, handle in
+            guard let h = handle else {
+                return
+            }
+            let uuid = String(cString: h.assumingMemoryBound(to: Int8.self))
+
+            LibStorj.progressCallbacks[uuid]?(progress, bytes, totalBytes)
+        }
+
+        let finishedCallback: storj_finished_upload_cb = { status, fileId, handle in
+            guard let h = handle else {
+                return
+            }
+            let uuid = String(cString: h.assumingMemoryBound(to: Int8.self))
+
+            var id: String?
+            if let f = fileId {
+                print("************ IIIIIDDDD <---")
+                id = String(cString: f)
+            }
+
+            print("*** STATUS: ---> \(status) ***")
+
+            LibStorj.finishedUploadCallbacks[uuid]?(status == 0, id)
+
+            // Delete callbacks after finished callback
+            LibStorj.finishedUploadCallbacks[uuid] = nil
+            LibStorj.progressCallbacks[uuid] = nil
+
+            // Free the handle
+            free(handle)
+        }
+
+        var status: Int32 = 1
+
+        var e = storjEnv.get()
+        let dupUUID = strdup(uuid)
+        var opts = uploadOpts.get()
+        status = storj_bridge_store_file(&e, state, &opts, dupUUID, progressCallback, finishedCallback)
+
+        // Run the uv loop
+        status = storjEnv.executeLoop()
+
+        return status == 0
     }
 }
