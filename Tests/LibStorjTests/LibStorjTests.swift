@@ -100,6 +100,8 @@ class LibStorjTests: XCTestCase {
 
     func testFiles() throws {
         // Create a tmp file
+        let tmpPath = "/tmp/libstorj-\(UUID().uuidString).txt"
+        TestToolbox.createRandomFile(path: tmpPath)
 
         // Create tmp bucket
         let buckName = UUID().uuidString
@@ -112,7 +114,7 @@ class LibStorjTests: XCTestCase {
             let uploadSuccess = self.libStorj.uploadFile(
                 bucketId: id,
                 fileName: "blabla.txt",
-                filePath: "tmpPath",
+                filePath: tmpPath,
                 progress: { (progress, bytes, totalBytes) in
                     print("PROGRESS: \(progress)")
                     print("BYTES: \(bytes)")
@@ -126,7 +128,10 @@ class LibStorjTests: XCTestCase {
                     let deleted = self.libStorj.deleteBucket(id: id, completion: { (s, re) in
                         XCTAssert(s)
                     })
-                    XCTAssert(deleted)}
+                    XCTAssert(deleted)
+
+                    // Delete tmp file
+                    XCTAssert(TestToolbox.deleteFile(path: tmpPath))}
             )
 
             XCTAssert(uploadSuccess)
