@@ -124,13 +124,22 @@ class LibStorjTests: XCTestCase {
                     XCTAssertNotNil(fileId)
                     print("FILEID: \(fileId ?? "***")")
 
+                    // Delete tmp file
+                    XCTAssert(TestToolbox.deleteFile(path: tmpPath))
+
+                    // Download this file again
+                    let d = self.libStorj.downloadFile(bucketId: id, fileId: fileId ?? "", destinationPath: tmpPath, completion: { (success) in
+                        XCTAssert(success)
+                    })
+                    XCTAssert(d)
+
                     // Delete bucket after we are done...
                     let deleted = self.libStorj.deleteBucket(id: id, completion: { (s, re) in
                         XCTAssert(s)
                     })
                     XCTAssert(deleted)
 
-                    // Delete tmp file
+                    // Delete downloaded tmp file
                     XCTAssert(TestToolbox.deleteFile(path: tmpPath))}
             )
 

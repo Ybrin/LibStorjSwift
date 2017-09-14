@@ -273,7 +273,7 @@ public final class LibStorj {
      *                         request was completed and a response was received.
      *
      * - returns: True if the job was queued and executed successfully, in which case
-     *         you can expect the callback to be exected. False otherwise, in which
+     *         you can expect the callback to be executed. False otherwise, in which
      *         case the execution of the callback function can't be guaranteed.
      */
     public func getInfo(completion: ((_ success: Bool, _ request: JsonRequest) -> Void)? = nil) -> Bool {
@@ -325,7 +325,7 @@ public final class LibStorj {
      *                         request was completed and a response was received.
      *
      * - returns: True if the job was queued and executed successfully, in which case
-     *         you can expect the callback to be exected. False otherwise, in which
+     *         you can expect the callback to be executed. False otherwise, in which
      *         case the execution of the callback function can't be guaranteed.
      */
     public func getBuckets(completion: ((_ success: Bool, _ request: GetBucketsRequest) -> Void)? = nil) -> Bool {
@@ -382,7 +382,7 @@ public final class LibStorj {
      *                         request was completed and a response was received.
      *
      * - returns: True if the job was queued and executed successfully, in which case
-     *         you can expect the callback to be exected. False otherwise, in which
+     *         you can expect the callback to be executed. False otherwise, in which
      *         case the execution of the callback function can't be guaranteed.
      */
     public func createBucket(name: String, completion: ((_ success: Bool, _ request: CreateBucketRequest) -> Void)? = nil) -> Bool {
@@ -436,7 +436,7 @@ public final class LibStorj {
      *                         request was completed and a response was received.
      *
      * - returns: True if the job was queued and executed successfully, in which case
-     *         you can expect the callback to be exected. False otherwise, in which
+     *         you can expect the callback to be executed. False otherwise, in which
      *         case the execution of the callback function can't be guaranteed.
      */
     public func deleteBucket(id: String, completion: ((_ success: Bool, _ request: JsonRequest) -> Void)? = nil) -> Bool {
@@ -491,7 +491,7 @@ public final class LibStorj {
      *                         request was completed and a response was received.
      *
      * - returns: True if the job was queued and executed successfully, in which case
-     *         you can expect the callback to be exected. False otherwise, in which
+     *         you can expect the callback to be executed. False otherwise, in which
      *         case the execution of the callback function can't be guaranteed.
      */
     public func getBucket(id: String, completion: ((_ success: Bool, _ request: JsonRequest) -> Void)? = nil) -> Bool {
@@ -546,7 +546,7 @@ public final class LibStorj {
      *                         request was completed and a response was received.
      *
      * - returns: True if the job was queued and executed successfully, in which case
-     *         you can expect the callback to be exected. False otherwise, in which
+     *         you can expect the callback to be executed. False otherwise, in which
      *         case the execution of the callback function can't be guaranteed.
      */
     public func listFiles(bucketId: String, completion: ((_ success: Bool, _ request: ListFilesRequest) -> Void)? = nil) -> Bool {
@@ -604,7 +604,7 @@ public final class LibStorj {
      *                         request was completed and a response was received.
      *
      * - returns: True if the job was queued and executed successfully, in which case
-     *         you can expect the callback to be exected. False otherwise, in which
+     *         you can expect the callback to be executed. False otherwise, in which
      *         case the execution of the callback function can't be guaranteed.
      */
     public func deleteFile(bucketId: String, fileId: String, completion: ((_ success: Bool, _ request: JsonRequest) -> Void)? = nil) -> Bool {
@@ -658,7 +658,7 @@ public final class LibStorj {
      *                         request was completed and a response was received.
      *
      * - returns: True if the job was queued and executed successfully, in which case
-     *         you can expect the callback to be exected. False otherwise, in which
+     *         you can expect the callback to be executed. False otherwise, in which
      *         case the execution of the callback function can't be guaranteed.
      */
     public func getBucket(bucketId: String, fileId: String, completion: ((_ success: Bool, _ request: JsonRequest) -> Void)? = nil) -> Bool {
@@ -712,7 +712,7 @@ public final class LibStorj {
      *                         request was completed and a response was received.
      *
      * - returns: True if the job was queued and executed successfully, in which case
-     *         you can expect the callback to be exected. False otherwise, in which
+     *         you can expect the callback to be executed. False otherwise, in which
      *         case the execution of the callback function can't be guaranteed.
      */
     public func listMirrors(bucketId: String, fileId: String, completion: ((_ success: Bool, _ request: JsonRequest) -> Void)? = nil) -> Bool {
@@ -766,6 +766,26 @@ public final class LibStorj {
     /// As a key a UUID should be used. e.g.: UUID().uuidString
     static var finishedUploadCallbacks: [String: ((_ success: Bool, _ fileId: String?) -> Void)] = [:]
 
+    /**
+     * Upload a file to the storj network.
+     *
+     * - parameter bucketId: The bucket id to which the file should be uploaded.
+     * - parameter fileName: The file name the uploaded file should have.
+     * - parameter filePath: The path to the file which should be uploaded.
+     *                       If this file doesn't exist, this function will
+     *                       return false.
+     * - parameter prepareFrameLimit: prepareFrameLimit for StorjUploadOpts. Defaults to 1.
+     * - parameter pushFrameLimit: pushFrameLimit for StorjUploadOpts. Defaults to 64.
+     * - parameter pushShardLimit: pushShardLimit for StorjUploadOpts. Defaults to 64.
+     * - parameter reedSolomon: Use reed solomon or not. Defaults to true.
+     * - parameter progress: A progress callback for the upload.
+     * - parameter completion: A callback function which will be called after the
+     *                         request was completed and the upload was finished.
+     *
+     * - returns: True if the job was queued and executed successfully, in which case
+     *         you can expect the callback to be executed. False otherwise, in which
+     *         case the execution of the callback function can't be guaranteed.
+     */
     public func uploadFile(
         bucketId: String,
         fileName: String,
@@ -790,7 +810,6 @@ public final class LibStorj {
             fileName: fileName,
             fd: f
         )
-        print("BUCKBUCK::: --> \(uploadOpts.bucketId ?? "***")")
 
         guard let uploadState = malloc(MemoryLayout<storj_upload_state_t>.size) else {
             return false
@@ -821,11 +840,8 @@ public final class LibStorj {
 
             var id: String?
             if let f = fileId {
-                print("************ IIIIIDDDD <---")
                 id = String(cString: f)
             }
-
-            print("*** STATUS: ---> \(status) ***")
 
             LibStorj.finishedUploadCallbacks[uuid]?(status == 0, id)
 
@@ -843,6 +859,85 @@ public final class LibStorj {
         let dupUUID = strdup(uuid)
         var opts = uploadOpts.get()
         status = storj_bridge_store_file(&e, state, &opts, dupUUID, progressCallback, finishedCallback)
+
+        // Run the uv loop
+        status = storjEnv.executeLoop()
+
+        return status == 0
+    }
+
+    /// A dictionary which holds all queued finished-download callbacks.
+    /// These callbacks must be stored in a static data structure
+    /// in order to don't be bound to the context free C convention
+    /// functions.
+    /// Appenders are responsible for deleting the stored value after
+    /// it is not used any more.
+    /// As a key a UUID should be used. e.g.: UUID().uuidString
+    static var finishedDownloadCallbacks: [String: ((_ success: Bool) -> Void)] = [:]
+
+    public func downloadFile(
+        bucketId: String,
+        fileId: String,
+        destinationPath: String,
+        progress: ((_ progress: Double, _ bytes: UInt64, _ totalBytes: UInt64) -> Void)? = nil,
+        completion: ((_ success: Bool) -> Void)? = nil
+        ) -> Bool {
+        guard access(destinationPath, F_OK) == -1 else {
+            // File already exists. Don't download it...
+            return false
+        }
+
+        guard let f = fopen(destinationPath, "w+") else {
+            return false
+        }
+
+        guard let downloadState = malloc(MemoryLayout<storj_download_state_t>.size) else {
+            return false
+        }
+        let state = downloadState.assumingMemoryBound(to: storj_download_state_t.self)
+
+        // The handle
+        let uuid = UUID().uuidString
+
+        // Set the callbacks
+        LibStorj.progressCallbacks[uuid] = progress
+        LibStorj.finishedDownloadCallbacks[uuid] = completion
+
+        let progressCallback: storj_progress_cb = { progress, bytes, totalBytes, handle in
+            guard let h = handle else {
+                return
+            }
+            let uuid = String(cString: h.assumingMemoryBound(to: Int8.self))
+
+            LibStorj.progressCallbacks[uuid]?(progress, bytes, totalBytes)
+        }
+
+        let finishedCallback: storj_finished_download_cb = { status, fd, handle in
+            guard let h = handle else {
+                return
+            }
+            let uuid = String(cString: h.assumingMemoryBound(to: Int8.self))
+
+            LibStorj.finishedDownloadCallbacks[uuid]?(status == 0)
+
+            // Delete callbacks after finished callback
+            LibStorj.finishedDownloadCallbacks[uuid] = nil
+            LibStorj.progressCallbacks[uuid] = nil
+
+            // Free the handle
+            free(handle)
+
+            // Close the file
+            if let fd = fd {
+                fclose(fd)
+            }
+        }
+
+        var status: Int32 = 1
+
+        var e = storjEnv.get()
+        let dupUUID = strdup(uuid)
+        status = storj_bridge_resolve_file(&e, state, strdup(bucketId), strdup(fileId), f, dupUUID, progressCallback, finishedCallback)
 
         // Run the uv loop
         status = storjEnv.executeLoop()
