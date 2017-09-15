@@ -8,7 +8,7 @@
 
 import Foundation
 import CLibStorj
-import JSON
+import SwiftyJSON
 
 public class GetBucketsRequest: CStruct {
 

@@ -7,8 +7,8 @@
 //
 
 import Foundation
-import JSON
 import CLibStorj
+import SwiftyJSON
 
 /**
  * JsonObject extension is a converter which basically wraps json-c around the JSON implementation
@@ -30,7 +30,7 @@ import CLibStorj
 public extension JSON {
 
     init?(jsonString: String) {
-        try? self.init(json: JSON(bytes: jsonString.bytes))
+        self.init(parseJSON: jsonString)
     }
 
     init?(jsonObject: OpaquePointer?) {
@@ -46,7 +46,7 @@ public extension JSON {
     }
 
     func jsonObject() -> OpaquePointer? {
-        guard let s = try? serialize().makeString() else {
+        guard let s = rawString() else {
             return nil
         }
 

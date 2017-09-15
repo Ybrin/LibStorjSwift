@@ -47,7 +47,7 @@ class LibStorjTests: XCTestCase {
         let success = libStorj.getInfo() { (success, req) in
             print("PRINTING SUCCESS: \(success)")
             print("SUCCESS!")
-            let resp = try? req.response?.serialize().makeString() ?? ""
+            let resp = req.response?.rawString() ?? ""
             // print(resp ?? "***")
 
             XCTAssertNotNil(resp)
@@ -72,7 +72,7 @@ class LibStorjTests: XCTestCase {
                 XCTAssert(s)
 
                 // Check id
-                XCTAssertEqual(req.bucket.id, re.response?["id"]?.string)
+                XCTAssertEqual(req.bucket.id, re.response?["id"].string)
             })
             XCTAssert(r)
         }
