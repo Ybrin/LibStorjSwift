@@ -8,7 +8,6 @@
 
 import Foundation
 import CLibStorj
-import JSON
 
 public class StorjFileMeta: CStruct {
 
