@@ -1,6 +1,7 @@
 Packages
 # Package.pins should not be checked in
 Package.pins
+Package.resolved
 .build
 xcuserdata
 *.xcodeproj
