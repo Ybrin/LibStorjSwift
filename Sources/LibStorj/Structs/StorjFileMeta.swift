@@ -85,8 +85,8 @@ public class StorjFileMeta: CStruct {
     }
 
     deinit {
-        for p in allocatedPointers {
+        /*for p in allocatedPointers {
             free(p)
-        }
+        }*/
     }
 }

@@ -83,10 +83,10 @@ public class GetBucketsRequest: CStruct {
     public func get() -> StructType {
         return jsonRequest
     }
-    
+
     deinit {
-        for p in allocatedPointers {
+        /*for p in allocatedPointers {
             free(p)
-        }
+        }*/
     }
 }
