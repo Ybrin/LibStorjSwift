@@ -67,7 +67,7 @@ public final class LibStorj {
 
     deinit {
         // Destroy the storj environment and free remaining allocated memory
-        _ = LibStorj.destroyEnv(env: storjEnv)
+        // _ = LibStorj.destroyEnv(env: storjEnv)
     }
 
     /**
